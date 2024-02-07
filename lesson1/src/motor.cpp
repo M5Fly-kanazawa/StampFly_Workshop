@@ -14,17 +14,6 @@ void init_motor(void)
     ledcAttachPin(PIN_FRONT_RIGHT_MOTOR, FRONT_RIGHT_MOTOR);
     ledcAttachPin(PIN_REAR_LEFT_MOTOR,   REAR_LEFT_MOTOR);
     ledcAttachPin(PIN_REAR_RIGHT_MOTOR,  REAR_RIGHT_MOTOR);
-  
-  #if 0
-  //motor test
-  for (uint8_t i=0; i<4; i++)
-  {
-    ledcWrite(i, 30);
-    delay(800);
-    ledcWrite(i, 0);
-    delay(500);
-  }
-  #endif
 }
 
 void set_motor_duty(uint8_t motor_handle, float duty)

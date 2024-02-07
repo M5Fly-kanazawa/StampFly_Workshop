@@ -4,14 +4,16 @@
 
 void init_motor(void)
 {
-  ledcSetup(FRONT_LEFT_MOTOR, FREQ, RESOLUTION);
-  ledcSetup(FRONT_RIGHT_MOTOR, FREQ, RESOLUTION);
-  ledcSetup(REAR_LEFT_MOTOR, FREQ, RESOLUTION);
-  ledcSetup(REAR_RIGHT_MOTOR, FREQ, RESOLUTION);
-  ledcAttachPin(pwmFrontLeft, FrontLeft_motor);
-  ledcAttachPin(pwmFrontRight, FrontRight_motor);
-  ledcAttachPin(pwmRearLeft, RearLeft_motor);
-  ledcAttachPin(pwmRearRight, RearRight_motor);
+    //PWM周波数と解像度の設定
+    ledcSetup(FRONT_LEFT_MOTOR,  FREQ, RESOLUTION);
+    ledcSetup(FRONT_RIGHT_MOTOR, FREQ, RESOLUTION);
+    ledcSetup(REAR_LEFT_MOTOR,   FREQ, RESOLUTION);
+    ledcSetup(REAR_RIGHT_MOTOR,  FREQ, RESOLUTION);
+
+    ledcAttachPin(PIN_FRONT_LEFT_MOTOR,  FRONT_LEFT_MOTOR);
+    ledcAttachPin(PIN_FRONT_RIGHT_MOTOR, FRONT_RIGHT_MOTOR);
+    ledcAttachPin(PIN_REAR_LEFT_MOTOR,   REAR_LEFT_MOTOR);
+    ledcAttachPin(PIN_REAR_RIGHT_MOTOR,  REAR_RIGHT_MOTOR);
   
   #if 0
   //motor test
@@ -23,4 +25,9 @@ void init_motor(void)
     delay(500);
   }
   #endif
+}
+
+void set_motor_duty(uint8_t motor_handle, float duty)
+{
+    ledcWrite(motor_handle, (uint32_t)(DUTY_MAX*duty));
 }

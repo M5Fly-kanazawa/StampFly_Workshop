@@ -17,6 +17,8 @@
 #define DUTY_MAX 255
 
 void init_motor(void);
+void set_motor_duty(uint8_t motor_handle, float duty);
+void stop_motor(void);
 
 
 #endif 

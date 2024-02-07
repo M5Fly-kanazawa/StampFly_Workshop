@@ -20,3 +20,11 @@ void set_motor_duty(uint8_t motor_handle, float duty)
 {
     ledcWrite(motor_handle, (uint32_t)(DUTY_MAX*duty));
 }
+
+void stop_motor(void)
+{
+    ledcWrite(FRONT_LEFT_MOTOR,  0);
+    ledcWrite(FRONT_RIGHT_MOTOR, 0);
+    ledcWrite(REAR_LEFT_MOTOR,   0);
+    ledcWrite(REAR_RIGHT_MOTOR,  0);
+}

@@ -1,8 +1,13 @@
 #ifndef RC_HPP
 #define RC_HPP
 
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
 #include <stdio.h>
 #include <stdint.h>
+
+#define CHANNEL 1
 
 #define RUDDER 0
 #define ELEVATOR 1
@@ -36,8 +41,8 @@
 #define THROTTLE_MAX_JOYC 100
 
 void init_rc(void);
-uint8_t rc_isconnected(void);
 uint8_t send_telemetry(uint8_t* data, uint16_t datalen);
+void print_rc(void);
 
 extern volatile float Stick[16];
 

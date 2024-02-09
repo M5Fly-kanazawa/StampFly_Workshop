@@ -11,7 +11,6 @@ volatile uint16_t Connect_flag = 0;
 //ATOM Lite (C): 4C:75:25:AE:27:FC
 //4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
-
 const uint8_t addr[6] = {0x4C, 0x75, 0x25, 0xAE, 0x27, 0xFC};
 
 esp_now_peer_info_t peerInfo;
@@ -143,7 +142,7 @@ void rc_init(void)
 
   //ペアリング
   memcpy(peerInfo.peer_addr, addr, 6);
-  peerInfo.channel = 5;
+  peerInfo.channel = CHANNEL;
   peerInfo.encrypt = false;
   if (esp_now_add_peer(&peerInfo) != ESP_OK) 
   {
@@ -158,7 +157,7 @@ void rc_init(void)
   USBSerial.println("Wait Contoroller ready....");
   //while(Connect_flag==0);
   USBSerial.println("Contoroller ready !");
-  esp_wifi_set_channel(5, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 }
 
 uint8_t telemetry_send(uint8_t* data, uint16_t datalen)

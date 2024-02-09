@@ -1,22 +1,16 @@
 #include "rc.hpp"
-#include <WiFi.h>
-#include <esp_now.h>
-#include <esp_wifi.h>
 
 //esp_now_peer_info_t slave;
 
 volatile uint16_t Connect_flag = 0;
 
 //Telemetry相手のMAC ADDRESS 4C:75:25:AD:B6:6C
-//ATOM Lite (C): 4C:75:25:AE:27:FC
-//4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
-
 const uint8_t addr[6] = {0x4C, 0x75, 0x25, 0xAE, 0x27, 0xFC};
 
 esp_now_peer_info_t peerInfo;
 
-//RC
+//RC Stick state
 volatile float Stick[16];
 
 // 受信コールバック
@@ -66,17 +60,6 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   //Stick[ELEVATOR] /= (0.5*3.14159);
   if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
   
-#if 0
-  USBSerial.printf("%6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
-                                            Stick[THROTTLE],
-                                            Stick[AILERON],
-                                            Stick[ELEVATOR],
-                                            Stick[RUDDER],
-                                            Stick[BUTTON],
-                                            Stick[BUTTON_A],
-                                            Stick[CONTROLMODE],
-                                            Stick[LOG]);
-#endif
 }
 
 // 送信コールバック
@@ -104,7 +87,7 @@ void init_rc(void)
 
   //ペアリング
   memcpy(peerInfo.peer_addr, addr, 6);
-  peerInfo.channel = 5;
+  peerInfo.channel = CHANNEL;
   peerInfo.encrypt = false;
   if (esp_now_add_peer(&peerInfo) != ESP_OK) 
   {
@@ -159,14 +142,15 @@ uint8_t send_telemetry(uint8_t* data, uint16_t datalen)
   return state;
 }
 
-uint8_t rc_isconnected(void)
+void print_rc(void)
 {
-    bool status;
-    Connect_flag++;
-    if (Connect_flag<10)status = 1;
-    else status = 0;
-    //USBSerial.printf("%d \n\r", Connect_flag);
-
-    return status;
+  USBSerial.printf("%6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
+                                            Stick[THROTTLE],
+                                            Stick[AILERON],
+                                            Stick[ELEVATOR],
+                                            Stick[RUDDER],
+                                            Stick[BUTTON],
+                                            Stick[BUTTON_A],
+                                            Stick[CONTROLMODE],
+                                            Stick[LOG]);
 }
-

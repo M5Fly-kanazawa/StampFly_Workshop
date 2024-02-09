@@ -1,4 +1,5 @@
-//Lesson 1
+//Lesson 2
+//スロットルレーバーでモータの回転が変わるようにする
 #include "flight_control.hpp"
 #include "motor.hpp"
 #include "rc.hpp"

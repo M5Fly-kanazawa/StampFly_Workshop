@@ -65,7 +65,9 @@ void loop_400Hz(void)
   }
   else
   {
+    //スロットルレーバーでモータの回転が変わるようにする
     stop_motor();
+    
   }
   
   Loop_counter ++ ;

@@ -102,7 +102,7 @@ void init_rc(void)
   USBSerial.println("Wait Contoroller ready....");
   //while(Connect_flag==0);
   USBSerial.println("Contoroller ready !");
-  esp_wifi_set_channel(5, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 }
 
 uint8_t send_telemetry(uint8_t* data, uint16_t datalen)
@@ -140,17 +140,4 @@ uint8_t send_telemetry(uint8_t* data, uint16_t datalen)
   //USBSerial.printf("%6d %d %d\r\n", cnt, error_flag, esp_now_send_status);
 
   return state;
-}
-
-void print_rc(void)
-{
-  USBSerial.printf("%6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
-                                            Stick[THROTTLE],
-                                            Stick[AILERON],
-                                            Stick[ELEVATOR],
-                                            Stick[RUDDER],
-                                            Stick[BUTTON],
-                                            Stick[BUTTON_A],
-                                            Stick[CONTROLMODE],
-                                            Stick[LOG]);
 }

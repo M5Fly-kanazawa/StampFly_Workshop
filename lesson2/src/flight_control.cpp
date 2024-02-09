@@ -1,6 +1,7 @@
 //Lesson 1
 #include "flight_control.hpp"
 #include "motor.hpp"
+#include "rc.hpp"
 
 //Global variable
 const float Control_period = 0.0025f;//400Hz //制御周期
@@ -34,6 +35,9 @@ void init_copter(void)
 
   //モータ設定
   init_motor();
+  //RC設定
+  init_rc();
+
   //割り込み設定
   init_interrupt();
   USBSerial.printf("Join StampFly!\r\n");
@@ -49,6 +53,8 @@ void loop_400Hz(void)
 
   //Start of Loop_400Hz function
   //以下に記述したコードが400Hzで繰り返される
+  
+  //Motorが2秒動いて止まるデモ
   if (Loop_counter < 800)
   {
     //Start motor
@@ -63,7 +69,9 @@ void loop_400Hz(void)
   }
   
   Loop_counter ++ ;
-  if(Loop_counter%400==0) USBSerial.printf("%d\r\n", Loop_counter);
+
+  //送信機からの受信データを確認する
+  if(Loop_counter%40==0) USBSerial.printf("%6d %6.3f %6.3f\n\r", Loop_counter, Stick[THROTTLE], Stick[ELEVATOR]);
   
   //End of Loop_400Hz function
 }

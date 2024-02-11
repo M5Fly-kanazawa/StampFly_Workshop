@@ -12,7 +12,8 @@ volatile uint16_t Connect_flag = 0;
 //4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
 //4C:75:25:AD:8B:20
-const uint8_t addr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
+uint8_t TelemAddr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
+uint8_t MyMacAddr[6];
 
 esp_now_peer_info_t peerInfo;
 
@@ -132,7 +133,10 @@ void rc_init(void)
   // ESP-NOW初期化
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
-  USBSerial.printf("MAC ADDRESS: %s\r\n", (WiFi.macAddress()).c_str());
+
+  WiFi.macAddress(MyMacAddr);
+  USBSerial.printf("MAC ADDRESS: %02X:%02X:%02X:%02X:%02X:%02X\r\n", 
+                  MyMacAddr[0], MyMacAddr[1], MyMacAddr[2], MyMacAddr[3], MyMacAddr[4], MyMacAddr[5]);
 
   if (esp_now_init() == ESP_OK) {
     USBSerial.println("ESPNow Init Success");
@@ -142,6 +146,7 @@ void rc_init(void)
   }
 
   //ペアリング
+  uint8_t addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(peerInfo.peer_addr, addr, 6);
   peerInfo.channel = CHANNEL;
   peerInfo.encrypt = false;
@@ -150,15 +155,43 @@ void rc_init(void)
         USBSerial.println("Failed to add peer");
         return;
   }
+  esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 
+  //Send my MAC address
+  for (uint16_t i=0; i<100; i++)
+  {
+    send_mac_address();
+    delay(1);
+  }
+
+  // ESP-NOW再初期化
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  if (esp_now_init() == ESP_OK) {
+    USBSerial.println("ESPNow Init Success2");
+  } else {
+    USBSerial.println("ESPNow Init Failed2");
+    ESP.restart();
+  }
+
+  //ペアリング
+  memcpy(peerInfo.peer_addr, TelemAddr, 6);
+  peerInfo.channel = CHANNEL;
+  peerInfo.encrypt = false;
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
+  {
+        USBSerial.println("Failed to add peer2");
+        return;
+  }
   // ESP-NOWコールバック登録
   esp_now_register_recv_cb(OnDataRecv);
   esp_now_register_send_cb(on_esp_now_sent);
   USBSerial.println("ESP-NOW Ready.");
-  //USBSerial.println("Wait Contoroller ready....");
-  //while(Connect_flag==0);
-  //USBSerial.println("Contoroller ready !");
-  esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
+}
+
+void send_mac_address(void)
+{
+  esp_now_send(peerInfo.peer_addr, MyMacAddr, 6);
 }
 
 uint8_t telemetry_send(uint8_t* data, uint16_t datalen)

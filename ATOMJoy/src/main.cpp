@@ -39,15 +39,35 @@ uint8_t disp_counter=0;
 
 //StampFly MAC ADDRESS
 //1 F4:12:FA:66:80:54 (Yellow)
-const uint8_t addr[6] = {0xF4, 0x12, 0xFA, 0x66, 0x80, 0x54};
+//2 F4:12:FA:66:77:A4
+uint8_t Addr[6] = {0xF4, 0x12, 0xFA, 0x66, 0x80, 0x54};
+
 
 //Channel
-uint8_t Channel = CHANNEL;
+uint8_t Ch_counter;
+volatile uint8_t Received_flag=0;
+volatile uint8_t Channel = CHANNEL;
 
 void rc_init(void);
 void data_send(void);
 void show_battery_info();
 void voltage_print(void);
+
+
+// 受信コールバック
+void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
+{
+  Received_flag = 1;
+  Channel = Ch_counter;
+  Addr[0] = recv_data[0];
+  Addr[1] = recv_data[1];
+  Addr[2] = recv_data[2];
+  Addr[3] = recv_data[3];
+  Addr[4] = recv_data[4];
+  Addr[5] = recv_data[5];
+}
+
+
 
 void rc_init(uint8_t ch)
 {
@@ -62,7 +82,7 @@ void rc_init(uint8_t ch)
   }
 
   //ペアリング
-  memcpy(peerInfo.peer_addr, addr, 6);
+  memcpy(peerInfo.peer_addr, Addr, 6);
   peerInfo.channel = ch;
   peerInfo.encrypt = false;
   uint8_t peer_mac_addre;
@@ -74,6 +94,75 @@ void rc_init(uint8_t ch)
   esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
 }
 
+void peering(void)
+{
+  // ESP-NOWコールバック登録
+  esp_now_register_recv_cb(OnDataRecv);
+
+  //ペアリング
+  Ch_counter =1;
+  while(1)
+  {
+
+    USBSerial.printf("Try channel %02d.\n\r", Ch_counter);
+    peerInfo.channel = Ch_counter;
+    peerInfo.encrypt = false;
+    if (esp_now_mod_peer(&peerInfo) != ESP_OK) 
+    {
+        USBSerial.println("Failed to add peer");
+        return;
+    }
+    esp_wifi_set_channel(Ch_counter, WIFI_SECOND_CHAN_NONE);
+
+    //Wait receive StampFly MAC Address
+    uint16_t counter=1;
+    while(Received_flag==0 && counter<40000)
+    {
+      counter++;
+    }
+    if (Received_flag==1)break;
+    Ch_counter++;
+    if(Ch_counter==15)Ch_counter=1;
+  }
+  USBSerial.printf("Channel:%02d\n\r", Channel);
+  USBSerial.printf("MAC:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
+                    Addr[0],Addr[1],Addr[2],Addr[3],Addr[4],Addr[5]);
+  
+  // ESP-NOW初期化
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  if (esp_now_init() == ESP_OK) {
+    USBSerial.println("ESPNow Init Success2");
+  } else {
+    USBSerial.println("ESPNow Init Failed2");
+    ESP.restart();
+  }
+
+  //ペアリング
+  memcpy(peerInfo.peer_addr, Addr, 6);
+  peerInfo.channel = Channel;
+  peerInfo.encrypt = false;
+  uint8_t peer_mac_addre;
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
+  {
+        USBSerial.println("Failed to add peer2");
+        return;
+  }  
+  esp_wifi_set_channel(Channel, WIFI_SECOND_CHAN_NONE);
+  
+  #if 0
+  memcpy(peerInfo.peer_addr, Addr, 6);
+  peerInfo.channel = Channel;
+  peerInfo.encrypt = false;
+  if (esp_now_mod_peer(&peerInfo) != ESP_OK) 
+  {
+      USBSerial.println("Failed to modify peer!");
+      return;
+  }
+  esp_wifi_set_channel(Channel, WIFI_SECOND_CHAN_NONE);
+  #endif
+}
+
 void change_channel(uint8_t ch)
 {
   peerInfo.channel = ch;
@@ -83,7 +172,6 @@ void change_channel(uint8_t ch)
         return;
   }
   esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
-
 }
 
 //周期カウンタ割り込み関数
@@ -97,11 +185,19 @@ void setup() {
   M5.begin();
   Wire1.begin(38, 39, 100*1000);
   rc_init(Channel);
-  
+  M5.update();  
   M5.Lcd.setRotation( 2 );
   M5.Lcd.setTextFont(2);
   M5.Lcd.setCursor(4, 2);
-  M5.Lcd.println("ATOMS3Joy");
+  
+
+  if(M5.Btn.isPressed())
+  {
+    USBSerial.printf("Button pressed!\n\r");
+    M5.Lcd.println("Peering...");
+    peering();
+  }
+
 
   //Display init
   //M5.Lcd.fillScreen(RED);       // 画面全体の塗りつぶし

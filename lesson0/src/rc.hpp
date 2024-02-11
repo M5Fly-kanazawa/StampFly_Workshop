@@ -46,6 +46,7 @@ void rc_demo(void);
 void rc_end(void);
 uint8_t rc_isconnected(void);
 uint8_t telemetry_send(uint8_t* data, uint16_t datalen);
+void send_mac_address(void);
 
 extern volatile float Stick[16];
 

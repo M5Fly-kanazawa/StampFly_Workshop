@@ -41,12 +41,15 @@ uint8_t disp_counter=0;
 //1 F4:12:FA:66:80:54 (Yellow)
 const uint8_t addr[6] = {0xF4, 0x12, 0xFA, 0x66, 0x80, 0x54};
 
+//Channel
+uint8_t Channel = CHANNEL;
+
 void rc_init(void);
 void data_send(void);
 void show_battery_info();
 void voltage_print(void);
 
-void rc_init(void)
+void rc_init(uint8_t ch)
 {
   // ESP-NOW初期化
   WiFi.mode(WIFI_STA);
@@ -60,14 +63,27 @@ void rc_init(void)
 
   //ペアリング
   memcpy(peerInfo.peer_addr, addr, 6);
-  peerInfo.channel = CHANNEL;
+  peerInfo.channel = ch;
   peerInfo.encrypt = false;
+  uint8_t peer_mac_addre;
   if (esp_now_add_peer(&peerInfo) != ESP_OK) 
   {
         USBSerial.println("Failed to add peer");
         return;
+  }  
+  esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+}
+
+void change_channel(uint8_t ch)
+{
+  peerInfo.channel = ch;
+  if (esp_now_mod_peer(&peerInfo)!=ESP_OK)
+  {
+        USBSerial.println("Failed to modify peer");
+        return;
   }
-  esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+
 }
 
 //周期カウンタ割り込み関数
@@ -80,12 +96,13 @@ void IRAM_ATTR onTimer()
 void setup() {
   M5.begin();
   Wire1.begin(38, 39, 100*1000);
-  rc_init();
+  rc_init(Channel);
   
   M5.Lcd.setRotation( 2 );
   M5.Lcd.setTextFont(2);
   M5.Lcd.setCursor(4, 2);
   M5.Lcd.println("ATOMS3Joy");
+
   //Display init
   //M5.Lcd.fillScreen(RED);       // 画面全体の塗りつぶし
   //M5.Lcd.setCursor(9, 10);      // カーソル位置の指定
@@ -172,7 +189,17 @@ void loop() {
 
   M5.update();
   joy_update();
-  
+
+  //Check Channel change  
+  if(M5.Btn.wasPressed()==true)
+  {
+    Channel++;
+    if (Channel==15)Channel=1;
+    change_channel(Channel);
+  }
+
+
+
   if (check_mode_change() == 1)
   {
     if (Mode==ANGLECONTROL)Mode=RATECONTROL;
@@ -238,45 +265,39 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("ATOMS3Joy");
+      M5.Lcd.printf("ATOMJoy");
       break;
     case 1:
-      M5.Lcd.printf("Volt: %5.1fV", Battery_voltage);
+      M5.Lcd.printf("BAT1: %4.1fV", Battery_voltage[0]);
       //M5.Lcd.printf("X:%4d",xstick);
       break;
     case 2:
-      M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
-      //M5.Lcd.printf("Y:%4d",ystick);
+      M5.Lcd.printf("BAT2: %4.1fV", Battery_voltage[1]);
+      //M5.Lcd.printf("X:%4d",xstick);
       break;
     case 3:
+      M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
+      break;
+    case 4:
+      M5.Lcd.printf("CHL: %02d",Channel);
+      break;
+    case 5:
       if( Mode == ANGLECONTROL )      M5.Lcd.printf("-STABILIZE-");
       else if ( Mode == RATECONTROL ) M5.Lcd.printf("-ACRO-     ");
       //M5.Lcd.printf("Phi:%5.1f",Phi*180/3.14159);
       break;
-    case 4:
+    case 6:
       //M5.Lcd.printf("Tht:%5.1f",Theta*180/3.14159);
       break;
-    case 5:
+    case 7:
       //M5.Lcd.printf("Psi:%5.1f",Psi*180/3.14159);
       break;
-    case 6:
+    case 8:
       //M5.Lcd.printf("FPS:%5.1f",1000000.0/dtime);
       break;
-    case 7:
+    case 9:
       //M5.Lcd.printf("Vlt:%3.1fV", Battery_voltage);
       break;
-    case 8:
-      //M5.Lcd.printf("Chg:%3d%%", bat_charge_p);
-      break;
-    case 9:
-      //disp_counter++;
-      //M5.Lcd.setCursor(2, 5+disp_counter*17);
-      //if( Mode == ANGLECONTROL ) M5.Lcd.printf("-STABILIZE-");
-      //else if ( Mode == RATECONTROL ) M5.Lcd.printf("-ACRO-     ");
-      //else if ( Mode == ANGLECONTROL_W_LOG) {} //M5.Lcd.printf("-STABILIZE.L-");
-      //else if ( Mode == RATECONTROL_W_LOG ) {} //M5.Lcd.printf("-ACRO.L-     ");
-      break;
-
   }
   disp_counter++;
   if(disp_counter==11)disp_counter=0;

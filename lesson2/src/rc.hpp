@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+//ここを自分の機体にわせて0~7の範囲で変更する
 #define CHANNEL 1
 
 #define RUDDER 0

@@ -11,7 +11,8 @@ volatile uint16_t Connect_flag = 0;
 //ATOM Lite (C): 4C:75:25:AE:27:FC
 //4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
-const uint8_t addr[6] = {0x4C, 0x75, 0x25, 0xAE, 0x27, 0xFC};
+//4C:75:25:AD:8B:20
+const uint8_t addr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
 
 esp_now_peer_info_t peerInfo;
 
@@ -154,9 +155,9 @@ void rc_init(void)
   esp_now_register_recv_cb(OnDataRecv);
   esp_now_register_send_cb(on_esp_now_sent);
   USBSerial.println("ESP-NOW Ready.");
-  USBSerial.println("Wait Contoroller ready....");
+  //USBSerial.println("Wait Contoroller ready....");
   //while(Connect_flag==0);
-  USBSerial.println("Contoroller ready !");
+  //USBSerial.println("Contoroller ready !");
   esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 }
 

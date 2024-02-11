@@ -7,8 +7,7 @@ int16_t button_counter[4];
 uint8_t button_state[4]={0};
 uint8_t button_old_state[4]={0};
 uint8_t buffer[4];
-float Battery_voltage;
-
+float Battery_voltage[2];
 
 uint16_t read_2byte_data(uint8_t address)
 {
@@ -37,13 +36,13 @@ uint16_t read_byte_data(uint8_t address)
     return data; 
 }
 
-float getBatteryVoltage(void) 
+float getBatteryVoltage(uint8_t addr) 
 {
     int32_t value;
 
-    value=read_2byte_data(BATTERY_VOLTAGE);
+    value=read_2byte_data(addr);
 
-    return ((float)value / 100.0f);
+    return ((float)value / 1000.0f);
 }
 
 
@@ -81,7 +80,8 @@ void joy_update(void)
         }
     }
     
-    Battery_voltage = getBatteryVoltage();
+    Battery_voltage[0] = getBatteryVoltage(BATTERY_VOLTAGE1);
+    Battery_voltage[1] = getBatteryVoltage(BATTERY_VOLTAGE2);
 
     #if 0
     USBSerial.printf("%4d %4d %4d %4d %3d %3d %3d %3d\n\r", 

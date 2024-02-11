@@ -12,7 +12,8 @@
 #define RIGHT_STICK_BUTTON_ADDRESS (0x71)
 #define LEFT_BUTTON_ADDRESS (0x72)
 #define RIGHT_BUTTON_ADDRESS (0x73)
-#define BATTERY_VOLTAGE (0x60)
+#define BATTERY_VOLTAGE1 (0x60)
+#define BATTERY_VOLTAGE2 (0x62)
 
 #define LEFTX (0)
 #define LEFTY (1)
@@ -33,7 +34,7 @@
 #define FLIP_BUTTON LEFT_STICK_BUTTON
 #define OPTION_BUTTON LEFT_BUTTON
 
-extern float Battery_voltage;
+extern float Battery_voltage[2];
 
 void joy_update(void);
 uint16_t getThrottle(void);

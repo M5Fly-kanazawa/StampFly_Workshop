@@ -3,6 +3,7 @@
 #include "flight_control.hpp"
 #include "motor.hpp"
 #include "rc.hpp"
+#include "led.hpp"
 
 //Global variable
 const float Control_period = 0.0025f;//400Hz //制御周期
@@ -38,6 +39,8 @@ void init_copter(void)
   init_motor();
   //RC設定
   init_rc();
+  //LED設定
+  init_led(0);
 
   //割り込み設定
   init_interrupt();
@@ -55,30 +58,26 @@ void loop_400Hz(void)
   //Start of Loop_400Hz function
   //以下に記述したコードが400Hzで繰り返される
   
-  //Motorが2秒動いて止まるデモ
-  if (Loop_counter < 800)
+  //LED5秒動後に変化する
+  if (Loop_counter < 4000)
   {
-    //Start motor
-    set_motor_duty(FRONT_LEFT_MOTOR,  0.15);
-    set_motor_duty(FRONT_RIGHT_MOTOR, 0.15);
-    set_motor_duty(REAR_LEFT_MOTOR,   0.15);
-    set_motor_duty(REAR_RIGHT_MOTOR,  0.15);
+    board_bottom_led(RED, 1);
+    board_tail_led(GREEN, 1);
+    stamp_led(BLUE, 1);  
   }
   else
   {
-    //スロットルレーバーでモータの回転が変わるようにする
-    stop_motor();
-    
+    board_bottom_led(YELLOW, 1);
+    board_tail_led(YELLOW, 1);
+    stamp_led(YELLOW, 1);      
   }
   
   Loop_counter ++ ;
 
-  //送信機からの受信データを確認する
-  if(Loop_counter%40==0) 
-    USBSerial.printf("%6d %6.3f %6.3f\n\r", 
-      Loop_counter, 
-      Stick[THROTTLE], 
-      Stick[ELEVATOR]);
+  //1秒ごとにLoop_counterの値を端末に表示
+  if(Loop_counter%400==0) 
+    USBSerial.printf("%6d\n\r", Loop_counter);
   
+  FastLED.show();
   //End of Loop_400Hz function
 }

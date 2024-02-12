@@ -398,24 +398,28 @@ void led_drive(void)
   }
   else if (Mode == PARKING_MODE)
   {
-    if(LedBlinkCounter==0){//<10
-      if (Led_color2&0x800000)Led_color2 = (Led_color2<<1)|1;
-      else Led_color2=Led_color2<<1; 
-      if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) onboard_led(Led_color2, 1);//GREEN
-      else onboard_led(POWEROFFCOLOR,1);
-      LedBlinkCounter++;
-    }
-    LedBlinkCounter++;
-    if (LedBlinkCounter>20)LedBlinkCounter=0;
-    #if 0
-    else if(LedBlinkCounter<200)//100
+    if(Under_voltage_flag < UNDER_VOLTAGE_COUNT)
     {
-      if (Under_voltage_flag <UNDER_VOLTAGE_COUNT) onboard_led(GREEN, 0);
-      else onboard_led(POWEROFFCOLOR,0);
+      //イルミネーション
+      if(LedBlinkCounter==0){//<10
+        if (Led_color2&0x800000)Led_color2 = (Led_color2<<1)|1;
+        else Led_color2=Led_color2<<1; 
+
+        if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) onboard_led(Led_color2, 1);
+        //else onboard_led(POWEROFFCOLOR,1);
+        LedBlinkCounter++;
+      }
       LedBlinkCounter++;
+      if (LedBlinkCounter>20)LedBlinkCounter=0;
     }
-    else LedBlinkCounter=0;
-    #endif
+    else
+    {
+      //水色点滅
+      if (LedBlinkCounter < 10) onboard_led(POWEROFFCOLOR,1);
+      else if (LedBlinkCounter < 200) onboard_led(POWEROFFCOLOR,0);
+      else LedBlinkCounter = 0;
+      LedBlinkCounter ++;
+    }
   }
 
   //Watch dog LED

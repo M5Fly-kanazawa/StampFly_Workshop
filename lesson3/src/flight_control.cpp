@@ -58,7 +58,7 @@ void loop_400Hz(void)
   //Start of Loop_400Hz function
   //以下に記述したコードが400Hzで繰り返される
   
-  //LED5秒動後に変化する
+  //LED10秒動後に変化する
   if (Loop_counter < 4000)
   {
     board_bottom_led(RED, 1);

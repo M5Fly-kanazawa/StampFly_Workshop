@@ -39,8 +39,6 @@
 #define ELEVATOR_MAX 127
 #define THROTTLE_MAX_JOYC 100
 
-//#define BTID "4c:75:25:d5:b2:8e"
-
 void init_rc(void);
 uint8_t send_telemetry(uint8_t* data, uint16_t datalen);
 void send_peer_info(void);

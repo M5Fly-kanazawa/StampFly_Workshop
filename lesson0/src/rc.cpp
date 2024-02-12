@@ -160,7 +160,7 @@ void rc_init(void)
   //Send my MAC address
   for (uint16_t i=0; i<100; i++)
   {
-    send_mac_address();
+    send_peer_info();
     delay(1);
   }
 
@@ -189,9 +189,12 @@ void rc_init(void)
   USBSerial.println("ESP-NOW Ready.");
 }
 
-void send_mac_address(void)
+void send_peer_info(void)
 {
-  esp_now_send(peerInfo.peer_addr, MyMacAddr, 6);
+  uint8_t data[7];
+  data[0] = CHANNEL;
+  memcpy(&data[1], MyMacAddr, 6);
+  esp_now_send(peerInfo.peer_addr, data, 7);
 }
 
 uint8_t telemetry_send(uint8_t* data, uint16_t datalen)

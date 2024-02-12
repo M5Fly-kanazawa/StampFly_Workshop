@@ -12,17 +12,28 @@
 #define RIGHT_STICK_BUTTON_ADDRESS (0x71)
 #define LEFT_BUTTON_ADDRESS (0x72)
 #define RIGHT_BUTTON_ADDRESS (0x73)
-#define BATTERY_VOLTAGE1 (0x60)
-#define BATTERY_VOLTAGE2 (0x62)
 
 #define LEFTX (0)
 #define LEFTY (1)
 #define RIGHTX (2)
 #define RIGHTY (3)
+
+#define NEW_ATOM_JOY
+#ifdef NEW_ATOM_JOY
+#define BATTERY_VOLTAGE1 (0x60)
+#define BATTERY_VOLTAGE2 (0x62)
 #define LEFT_STICK_BUTTON (2)
 #define RIGHT_STICK_BUTTON (3)
 #define LEFT_BUTTON (0)
 #define RIGHT_BUTTON (1)
+#else
+#define BATTERY_VOLTAGE1 (0x60)
+#define LEFT_STICK_BUTTON (0)
+#define RIGHT_STICK_BUTTON (1)
+#define LEFT_BUTTON (2)
+#define RIGHT_BUTTON (3)
+#endif
+
 
 //Control Mapping
 #define THROTTLE RIGHTY

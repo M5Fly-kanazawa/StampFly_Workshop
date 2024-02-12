@@ -6,7 +6,7 @@
 
 //#define MINIJOYC
 
-#define CHANNEL 1
+#define CHANNEL 14
 
 #define RUDDER 0
 #define ELEVATOR 1
@@ -46,7 +46,7 @@ void rc_demo(void);
 void rc_end(void);
 uint8_t rc_isconnected(void);
 uint8_t telemetry_send(uint8_t* data, uint16_t datalen);
-void send_mac_address(void);
+void send_peer_info(void);
 
 extern volatile float Stick[16];
 

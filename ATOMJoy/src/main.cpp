@@ -7,6 +7,9 @@
 #include <MPU6886.h>
 #include <MadgwickAHRS.h>
 #include <atoms3joy.h>
+#include <FS.h>
+#include <SPIFFS.h>
+
 
 #define CHANNEL 1
 
@@ -15,6 +18,7 @@
 #define ANGLECONTROL_W_LOG 2
 #define RATECONTROL_W_LOG 3
 #define RESO10BIT (4096)
+
 
 esp_now_peer_info_t peerInfo;
 
@@ -28,7 +32,9 @@ short xstick=0;
 short ystick=0;
 uint8_t Mode=ANGLECONTROL;
 volatile uint8_t Loop_flag=0;
-
+float Timer = 0.0;
+float dTime = 0.01;
+uint8_t Timer_state = 0;
 
 unsigned long stime,etime,dtime;
 byte axp_cnt=0;
@@ -40,7 +46,8 @@ uint8_t disp_counter=0;
 //StampFly MAC ADDRESS
 //1 F4:12:FA:66:80:54 (Yellow)
 //2 F4:12:FA:66:77:A4
-uint8_t Addr[6] = {0xF4, 0x12, 0xFA, 0x66, 0x80, 0x54};
+uint8_t Addr1[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t Addr2[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 
 //Channel
@@ -53,24 +60,81 @@ void data_send(void);
 void show_battery_info();
 void voltage_print(void);
 
-
 // 受信コールバック
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
 {
   Received_flag = 1;
-  Channel = Ch_counter;
-  Addr[0] = recv_data[0];
-  Addr[1] = recv_data[1];
-  Addr[2] = recv_data[2];
-  Addr[3] = recv_data[3];
-  Addr[4] = recv_data[4];
-  Addr[5] = recv_data[5];
+  Channel = recv_data[0];
+  Addr2[0] = recv_data[1];
+  Addr2[1] = recv_data[2];
+  Addr2[2] = recv_data[3];
+  Addr2[3] = recv_data[4];
+  Addr2[4] = recv_data[5];
+  Addr2[5] = recv_data[6];
 }
 
+#define BUF_SIZE 128
+// EEPROMにデータを保存する
+void save_data(void) 
+{
+  SPIFFS.begin(true);
+  /* CREATE FILE */
+  File fp = SPIFFS.open("/peer_info.txt", FILE_WRITE); // 書き込み、存在すれば上書き
+  char buf[BUF_SIZE + 1];
+  sprintf(buf, "%d,%02X,%02X,%02X,%02X,%02X,%02X", 
+          Channel, 
+          Addr2[0],
+          Addr2[1],
+          Addr2[2],
+          Addr2[3],
+          Addr2[4],
+          Addr2[5]);
+  fp.write((uint8_t *)buf, BUF_SIZE);
+  fp.close();
+  SPIFFS.end();
 
+  USBSerial.printf("Saved Data:%d,[%02X:%02X:%02X:%02X:%02X:%02X]",
+      Channel, 
+      Addr2[0],
+      Addr2[1],
+      Addr2[2],
+      Addr2[3],
+      Addr2[4],
+      Addr2[5]);    
+}
+
+// EEPROMからデータを読み出す
+void load_data(void) 
+{
+  SPIFFS.begin(true);
+  File fp = SPIFFS.open("/peer_info.txt", FILE_READ);
+  char buf[BUF_SIZE + 1];
+  while (fp.read((uint8_t *)buf, BUF_SIZE) == BUF_SIZE)
+  {
+    //USBSerial.print(buf);
+    sscanf(buf,"%hhd,%hhX,%hhX,%hhX,%hhX,%hhX,%hhX",
+          &Channel, 
+          &Addr2[0],
+          &Addr2[1],
+          &Addr2[2],
+          &Addr2[3],
+          &Addr2[4],
+          &Addr2[5]);    
+    USBSerial.printf("%d,%02X,%02X,%02X,%02X,%02X,%02X\n\r",
+          Channel, 
+          Addr2[0],
+          Addr2[1],
+          Addr2[2],
+          Addr2[3],
+          Addr2[4],
+          Addr2[5]);    
+  }
+  fp.close();
+  SPIFFS.end();
+}
 
 void rc_init(uint8_t ch)
-{
+{  
   // ESP-NOW初期化
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -82,14 +146,14 @@ void rc_init(uint8_t ch)
   }
 
   //ペアリング
-  memcpy(peerInfo.peer_addr, Addr, 6);
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, Addr1, 6);
   peerInfo.channel = ch;
   peerInfo.encrypt = false;
   uint8_t peer_mac_addre;
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
+  while (esp_now_add_peer(&peerInfo) != ESP_OK) 
   {
         USBSerial.println("Failed to add peer");
-        return;
   }  
   esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
 }
@@ -98,69 +162,45 @@ void peering(void)
 {
   // ESP-NOWコールバック登録
   esp_now_register_recv_cb(OnDataRecv);
-
   //ペアリング
   Ch_counter =1;
   while(1)
   {
-
     USBSerial.printf("Try channel %02d.\n\r", Ch_counter);
     peerInfo.channel = Ch_counter;
     peerInfo.encrypt = false;
-    if (esp_now_mod_peer(&peerInfo) != ESP_OK) 
+    while (esp_now_mod_peer(&peerInfo) != ESP_OK) 
     {
-        USBSerial.println("Failed to add peer");
-        return;
+        USBSerial.println("Failed to mod peer");
     }
     esp_wifi_set_channel(Ch_counter, WIFI_SECOND_CHAN_NONE);
 
     //Wait receive StampFly MAC Address
-    uint16_t counter=1;
-    while(Received_flag==0 && counter<40000)
-    {
-      counter++;
-    }
+    uint32_t counter=1;
+    usleep(100);
     if (Received_flag==1)break;
     Ch_counter++;
     if(Ch_counter==15)Ch_counter=1;
   }
+
   USBSerial.printf("Channel:%02d\n\r", Channel);
   USBSerial.printf("MAC:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
-                    Addr[0],Addr[1],Addr[2],Addr[3],Addr[4],Addr[5]);
-  
-  // ESP-NOW初期化
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  if (esp_now_init() == ESP_OK) {
-    USBSerial.println("ESPNow Init Success2");
-  } else {
-    USBSerial.println("ESPNow Init Failed2");
-    ESP.restart();
-  }
+                    Addr2[0],Addr2[1],Addr2[2],Addr2[3],Addr2[4],Addr2[5]);
+  save_data();
 
-  //ペアリング
-  memcpy(peerInfo.peer_addr, Addr, 6);
+  //Peering
+  while (esp_now_del_peer(Addr1) != ESP_OK) {
+    Serial.println("Failed to delete peer1");
+  }
+  memset(&peerInfo, 0, sizeof(peerInfo));
+  memcpy(peerInfo.peer_addr, Addr2, 6);
   peerInfo.channel = Channel;
   peerInfo.encrypt = false;
-  uint8_t peer_mac_addre;
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
+  while (esp_now_add_peer(&peerInfo) != ESP_OK) 
   {
         USBSerial.println("Failed to add peer2");
-        return;
   }  
   esp_wifi_set_channel(Channel, WIFI_SECOND_CHAN_NONE);
-  
-  #if 0
-  memcpy(peerInfo.peer_addr, Addr, 6);
-  peerInfo.channel = Channel;
-  peerInfo.encrypt = false;
-  if (esp_now_mod_peer(&peerInfo) != ESP_OK) 
-  {
-      USBSerial.println("Failed to modify peer!");
-      return;
-  }
-  esp_wifi_set_channel(Channel, WIFI_SECOND_CHAN_NONE);
-  #endif
 }
 
 void change_channel(uint8_t ch)
@@ -179,18 +219,19 @@ hw_timer_t * timer = NULL;
 void IRAM_ATTR onTimer() 
 {
   Loop_flag = 1;
+  //Timer = Timer + dTime;
 }
 
 void setup() {
   M5.begin();
-  Wire1.begin(38, 39, 100*1000);
+  Wire1.begin(38, 39, 400*1000);
+  load_data();
   rc_init(Channel);
   M5.update();  
   M5.Lcd.setRotation( 2 );
   M5.Lcd.setTextFont(2);
   M5.Lcd.setCursor(4, 2);
   
-
   if(M5.Btn.isPressed())
   {
     USBSerial.printf("Button pressed!\n\r");
@@ -281,19 +322,37 @@ void loop() {
   Loop_flag = 0;
   etime = stime;
   stime = micros();
-  dtime = stime - etime;
-
+  dtime = stime - etime;  
   M5.update();
   joy_update();
 
   //Check Channel change  
   if(M5.Btn.wasPressed()==true)
   {
-    Channel++;
-    if (Channel==15)Channel=1;
-    change_channel(Channel);
+    if (Timer_state == 0)Timer_state = 1;
+    else if (Timer_state == 1)Timer_state = 0;
+
+    //Channel++;
+    //if (Channel==15)Channel=1;
+    //change_channel(Channel);
   }
 
+  if(M5.Btn.pressedFor(400)==true)
+  {
+    Timer_state = 2;
+  }
+
+  if (Timer_state == 1)
+  {
+    //カウントアップ
+    Timer = Timer + dTime;
+  }
+  else if (Timer_state == 2)
+  {
+    //タイマリセット
+    Timer = 0.0;
+    Timer_state = 0;
+  }
 
 
   if (check_mode_change() == 1)
@@ -368,8 +427,10 @@ void loop() {
       //M5.Lcd.printf("X:%4d",xstick);
       break;
     case 2:
+      #ifdef NEW_ATOM_JOY
       M5.Lcd.printf("BAT2: %4.1fV", Battery_voltage[1]);
       //M5.Lcd.printf("X:%4d",xstick);
+      #endif
       break;
     case 3:
       M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
@@ -383,7 +444,7 @@ void loop() {
       //M5.Lcd.printf("Phi:%5.1f",Phi*180/3.14159);
       break;
     case 6:
-      //M5.Lcd.printf("Tht:%5.1f",Theta*180/3.14159);
+      M5.Lcd.printf("Time:%7.2f",Timer);
       break;
     case 7:
       //M5.Lcd.printf("Psi:%5.1f",Psi*180/3.14159);

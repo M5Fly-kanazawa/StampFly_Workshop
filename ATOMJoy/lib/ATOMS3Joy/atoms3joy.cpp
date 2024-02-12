@@ -41,8 +41,11 @@ float getBatteryVoltage(uint8_t addr)
     int32_t value;
 
     value=read_2byte_data(addr);
-
+    #ifdef NEW_ATOM_JOY
     return ((float)value / 1000.0f);
+    #else
+    return ((float)value / 100.0f);
+    #endif
 }
 
 
@@ -81,8 +84,9 @@ void joy_update(void)
     }
     
     Battery_voltage[0] = getBatteryVoltage(BATTERY_VOLTAGE1);
+    #ifdef NEW_ATOM_JOY
     Battery_voltage[1] = getBatteryVoltage(BATTERY_VOLTAGE2);
-
+    #endif
     #if 0
     USBSerial.printf("%4d %4d %4d %4d %3d %3d %3d %3d\n\r", 
                                             stick[RIGHTX],

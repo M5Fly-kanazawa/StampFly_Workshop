@@ -78,6 +78,6 @@ void loop_400Hz(void)
   if(Loop_counter%400==0) 
     USBSerial.printf("%6d\n\r", Loop_counter);
   
-  FastLED.show();
+  FastLED.show(64);
   //End of Loop_400Hz function
 }

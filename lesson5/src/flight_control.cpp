@@ -4,6 +4,7 @@
 #include "motor.hpp"
 #include "rc.hpp"
 #include "led.hpp"
+#include "imu.hpp"
 
 //Global variable
 const float Control_period = 0.0025f;//400Hz //制御周期
@@ -41,6 +42,9 @@ void init_copter(void)
   init_rc();
   //LED設定
   init_led(0);
+  //IMUの設定
+  imu_init();
+  imu_update();
 
   //割り込み設定
   init_interrupt();
@@ -78,6 +82,7 @@ void loop_400Hz(void)
   if(Loop_counter%400==0) 
     USBSerial.printf("%6d\n\r", Loop_counter);
   
-  FastLED.show(64);
+  imu_update();
+  FastLED.show();
   //End of Loop_400Hz function
 }

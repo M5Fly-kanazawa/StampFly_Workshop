@@ -66,9 +66,9 @@ void loop_400Hz(void)
 
   //値調整のスケーリング係数
   float kt = 1/6.20e2;
-  float kl = 0.5*1/6.20e2;
-  float km = 0.5*1/6.20e2;
-  float kn = 0.5*1/3.49e7;
+  float kl = 0.5 * (1/6.20e2);
+  float km = 0.5 * (1/6.20e2);
+  float kn = 0.5 * (1/3.49e7);
   //操縦信号の取得
   float Thrust0 = 0.6;
   float StkThrust = Stick[THROTTLE];
@@ -77,9 +77,9 @@ void loop_400Hz(void)
   float Pitch_moment = km * Stick[ELEVATOR];
   float Yaw_moment = kn * Stick[RUDDER];
   //Mixing
-  float delta_fr = mix[0]*Thrust + mix[1]*Roll_moment + mix[2]*Pitch_moment + mix[3]*Yaw_moment;
-  float delta_rr = mix[4]*Thrust + mix[5]*Roll_moment + mix[6]*Pitch_moment + mix[7]*Yaw_moment;
-  float delta_rl = mix[8]*Thrust + mix[9]*Roll_moment + mix[10]*Pitch_moment + mix[11]*Yaw_moment;
+  float delta_fr = mix[0] *Thrust + mix[1] *Roll_moment + mix[2] *Pitch_moment + mix[3] *Yaw_moment;
+  float delta_rr = mix[4] *Thrust + mix[5] *Roll_moment + mix[6] *Pitch_moment + mix[7] *Yaw_moment;
+  float delta_rl = mix[8] *Thrust + mix[9] *Roll_moment + mix[10]*Pitch_moment + mix[11]*Yaw_moment;
   float delta_fl = mix[12]*Thrust + mix[13]*Roll_moment + mix[14]*Pitch_moment + mix[15]*Yaw_moment;
   //Duty計算
   float fr_duty = Thrust0 + delta_fr;
@@ -94,11 +94,13 @@ void loop_400Hz(void)
   if (rl_duty < 0.0)  rl_duty = 0.0;
   if (fl_duty > 0.95) fl_duty = 0.95;
   if (fl_duty < 0.0)  fl_duty = 0.0;
+  //Set Duty
   set_motor_duty(FRONT_RIGHT_MOTOR, fr_duty);
   set_motor_duty(REAR_RIGHT_MOTOR,  rr_duty);
-  set_motor_duty(REAR_LEFT_MOTOR,  rl_duty);
+  set_motor_duty(REAR_LEFT_MOTOR,   rl_duty);
   set_motor_duty(FRONT_LEFT_MOTOR,  fl_duty);
 
+  //LED 点灯
   board_tail_led(GREEN, 1);
   Loop_counter ++ ;
 

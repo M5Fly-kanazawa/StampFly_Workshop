@@ -81,7 +81,7 @@ void loop_400Hz(void)
   float delta_rr = mix[4]*Thrust + mix[5]*Roll_moment + mix[6]*Pitch_moment + mix[7]*Yaw_moment;
   float delta_rl = mix[8]*Thrust + mix[9]*Roll_moment + mix[10]*Pitch_moment + mix[11]*Yaw_moment;
   float delta_fl = mix[12]*Thrust + mix[13]*Roll_moment + mix[14]*Pitch_moment + mix[15]*Yaw_moment;
-
+  //Duty計算
   float fr_duty = Thrust0 + delta_fr;
   float rr_duty = Thrust0 + delta_rr;
   float rl_duty = Thrust0 + delta_rl;

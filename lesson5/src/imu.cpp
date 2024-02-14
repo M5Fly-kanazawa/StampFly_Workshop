@@ -56,32 +56,32 @@ void imu_update(void)
 
 float imu_get_acc_x(void)
 {
-    return lsb_to_mps2(imu_data.acc.x, 8.0, 16)/GRAVITY_EARTH;
+    return lsb_to_mps2(imu_data.acc.y, 8.0, 16)/GRAVITY_EARTH;
 }
 
 float imu_get_acc_y(void)
 {
-    return lsb_to_mps2(imu_data.acc.y, 8.0, 16)/GRAVITY_EARTH;
+    return lsb_to_mps2(imu_data.acc.x, 8.0, 16)/GRAVITY_EARTH;
 }
 
 float imu_get_acc_z(void)
 {
-    return lsb_to_mps2(imu_data.acc.z, 8.0, 16)/GRAVITY_EARTH;
+    return -lsb_to_mps2(imu_data.acc.z, 8.0, 16)/GRAVITY_EARTH;
 }
 
 float imu_get_gyro_x(void)
 {
-    return lsb_to_rps(imu_data.gyr.x, DPS20002RAD, 16);
+    return lsb_to_rps(imu_data.gyr.y, DPS20002RAD, 16);
 }
 
 float imu_get_gyro_y(void)
 {
-    return lsb_to_rps(imu_data.gyr.y, DPS20002RAD, 16);
+    return lsb_to_rps(imu_data.gyr.x, DPS20002RAD, 16);
 }
 
 float imu_get_gyro_z(void)
 {
-    return lsb_to_rps(imu_data.gyr.z, DPS20002RAD, 16);
+    return -lsb_to_rps(imu_data.gyr.z, DPS20002RAD, 16);
 }
 
 void imu_test(void)

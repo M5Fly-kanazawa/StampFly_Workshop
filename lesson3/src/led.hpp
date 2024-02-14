@@ -23,5 +23,7 @@ void init_led(uint8_t state);
 void board_tail_led(CRGB color, uint8_t state);
 void board_bottom_led(CRGB color, uint8_t state);
 void stamp_led(CRGB color, uint8_t state);
+void blink_led(void);
+
 
 #endif

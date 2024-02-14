@@ -78,9 +78,12 @@ void loop_400Hz(void)
   
   Loop_counter ++ ;
 
-  //1秒ごとにLoop_counterの値を端末に表示
-  if(Loop_counter%400==0) 
-    USBSerial.printf("%6d\n\r", Loop_counter);
+  //0.01秒ごとにLoop_counterの値と加速度Xと角速度Xを端末に表示
+  float ax, gx;
+  ax = imu_get_acc_x();
+  gx = imu_get_gyro_x();
+  if(Loop_counter%4==0) 
+    USBSerial.printf("%6d,%6.3f,%6.3f\n\r", Loop_counter, ax, gx);
   
   imu_update();
   FastLED.show();

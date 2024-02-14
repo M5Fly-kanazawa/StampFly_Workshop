@@ -3,7 +3,7 @@
 CRGB Stamp_led[1];
 CRGB Board_led[2];
 
-uint16_t LED_counter=0;
+uint32_t LED_counter=0;
 
 void init_led(uint8_t state)
 {
@@ -44,4 +44,11 @@ void stamp_led(CRGB color, uint8_t state)
 void blink_led(void)
 {
     //ここに自分のコードを追加する（引数が必要なら変更指定良い）
+    LED_counter++;
+    if (LED_counter<400)
+        board_bottom_led(RED, 1);
+    else if(LED_counter <800)
+        board_bottom_led(RED, 0);
+    else LED_counter = 0;
+       
 }

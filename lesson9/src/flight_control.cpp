@@ -49,6 +49,8 @@ void init_copter(void)
 
   //割り込み設定
   init_interrupt();
+
+  //起動メッセージ
   USBSerial.printf("Join StampFly!\r\n");
 }
 
@@ -62,30 +64,9 @@ void loop_400Hz(void)
 
   //Start of Loop_400Hz function
   //以下に記述したコードが400Hzで繰り返される
-  
-  //LED10秒動後に変化する
-  if (Loop_counter < 4000)
-  {
-    board_bottom_led(RED, 1);
-    board_tail_led(GREEN, 1);
-    stamp_led(BLUE, 1);  
-  }
-  else
-  {
-    board_bottom_led(YELLOW, 1);
-    board_tail_led(YELLOW, 1);
-    stamp_led(YELLOW, 1);      
-  }
-  
-  Loop_counter ++ ;
+  //以下に自分のコードを記述してください
 
-  //0.01秒ごとにLoop_counterの値と加速度Xと角速度Xを端末に表示
-  float ax, gx;
-  ax = imu_get_acc_x();
-  gx = imu_get_gyro_x();
-  if(Loop_counter%40==0) 
-    USBSerial.printf("%6d,%6.3f,%6.3f,%6.3f\n\r", Loop_counter, ax, gx, sin((float)Loop_counter*0.0025));
-  
+
   imu_update();
   FastLED.show();
   //End of Loop_400Hz function

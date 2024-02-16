@@ -6,11 +6,18 @@
 #include "led.hpp"
 #include "imu.hpp"
 #include <math.h>
+#include "pid.hpp"
 
 //Global variable
 const float Control_period = 0.0025f;//400Hz //制御周期
 volatile uint8_t Loop_flag = 0;
 uint32_t Loop_counter = 0;
+
+//ここから新しくかいたよ
+uint8_t Mode = 0;
+float Ref_p, Ref_q, Ref_r; 
+float RateP, RateQ, RateR;
+float DutyFR, DutyRR, DutyRL, DutyFL;
 
 //割り込み関数
 //Intrupt function
@@ -54,6 +61,54 @@ void init_copter(void)
   USBSerial.printf("Join StampFly!\r\n");
 }
 
+void receive(void)
+{
+
+}
+
+void get_gyro(void)
+{
+
+}
+
+void pid_control()
+{
+
+}
+
+void mixing()
+{
+
+}
+
+void filter()
+{
+
+}
+
+void set_duty(float fr, float rr, float rl, float fl)
+{
+
+}
+
+
+void arm(void)
+{
+  receive();
+  get_gyro();
+  pid_control();
+  mixing();
+  filter();
+  set_duty();
+}
+
+void disarm(void)
+{
+  stop_motor();
+  reset_pid();
+}
+
+
 //Main loop
 void loop_400Hz(void)
 {
@@ -65,6 +120,14 @@ void loop_400Hz(void)
   //Start of Loop_400Hz function
   //以下に記述したコードが400Hzで繰り返される
   //以下に自分のコードを記述してください
+  
+  if(Mode = 0)
+  {
+    disarm();
+  }
+  else{
+    arm();
+  }
 
 
   imu_update();

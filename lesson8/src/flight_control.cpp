@@ -80,11 +80,25 @@ void loop_400Hz(void)
   Loop_counter ++ ;
 
   //0.01秒ごとにLoop_counterの値と加速度Xと角速度Xを端末に表示
-  float ax, gx;
-  ax = imu_get_acc_x();
-  gx = imu_get_gyro_x();
-  if(Loop_counter%40==0) 
-    USBSerial.printf("%6d,%6.3f,%6.3f,%6.3f\n\r", Loop_counter, ax, gx, sin((float)Loop_counter*0.0025));
+  float ax, ay, az, gx, gy, gz;
+  ax = -imu_get_acc_x();
+  ay = -imu_get_acc_y();
+  az = -imu_get_acc_z();
+  gy = imu_get_gyro_y();
+
+  if(Loop_counter%1==0)
+  USBSerial.printf(">sin:%6.3f\n", sin((float)Loop_counter*0.0025)); 
+  USBSerial.printf(">ax:%6.3f\n", ax); 
+  USBSerial.printf(">ay:%6.3f\n", ay); 
+  USBSerial.printf(">az:%6.3f\n", az); 
+  USBSerial.printf(">gy:%6.3f\n", gy);
+  
+  USBSerial.printf(">tht:%6.3f\n", asin(-ax)*180/PI);
+  USBSerial.printf(">phi:%6.3f\n", atan2(ay, az)*180/PI);
+   
+  
+
+    //USBSerial.printf("%6d,%6.3f,%6.3f,%6.3f\n\r", Loop_counter, ax, gx, sin((float)Loop_counter*0.0025));
   
   imu_update();
   FastLED.show();

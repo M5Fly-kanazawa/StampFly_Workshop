@@ -18,6 +18,8 @@ void init_motor(void)
 
 void set_motor_duty(uint8_t motor_handle, float duty)
 {
+    if (duty < 0.0) duty = 0.0;
+    else if (duty > 0.95) duty = 0.95;
     ledcWrite(motor_handle, (uint32_t)(DUTY_MAX*duty));
 }
 

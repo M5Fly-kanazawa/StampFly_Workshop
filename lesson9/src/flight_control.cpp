@@ -71,22 +71,22 @@ void get_gyro(void)
 
 }
 
-void pid_control()
+void pid_control(void)
 {
 
 }
 
-void mixing()
+void mixing(void)
 {
 
 }
 
-void filter()
+void filter(void)
 {
 
 }
 
-void set_duty(float fr, float rr, float rl, float fl)
+void set_duty(void)
 {
 
 }

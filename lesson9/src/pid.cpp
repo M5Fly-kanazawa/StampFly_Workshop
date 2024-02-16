@@ -1,5 +1,5 @@
 //pid.cpp
-#include "pid.h"
+#include "pid.hpp"
 
 void pid_control(float p, float q, float r, 
                  float p_ref, float q_ref, float r_ref,
@@ -8,7 +8,7 @@ void pid_control(float p, float q, float r,
 
 }
 
-void reset_pid(pid_t *pidst)
+void reset_pid(void)
 {
 
 }

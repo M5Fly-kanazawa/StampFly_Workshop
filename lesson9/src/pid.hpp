@@ -9,13 +9,11 @@ typedef struct
     float ti;
     float td;
     float s;
-} pid_t;
+} hoge;
 
-void pid_control(float p, float q, float r, 
-                 float p_ref, float q_ref, float r_ref,
-                 float *pu, float *qu, float *ru);
+void pid_control(void);
 
-void reset_pid(pid_t *pidst);
+void reset_pid(void);
 
 //END of Header file
 #endif

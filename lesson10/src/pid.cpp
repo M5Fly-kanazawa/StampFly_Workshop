@@ -38,7 +38,6 @@ float pid_R(float ref, float rate, uint8_t flag)
     return yaw.kp*(err + diff * yaw.td + yaw.s/yaw.ti);        
 }
 
-
 void reset_pid(void)
 {
     roll.kp = 1.0;

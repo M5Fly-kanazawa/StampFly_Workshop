@@ -42,12 +42,12 @@ float pid_R(float ref, float rate, uint8_t flag)
 
 void reset_pid(void)
 {
-    roll.kp = 0.6;
+    roll.kp = 1.0;
     roll.ti = 10000000.0;
     roll.td = 0.0;
     roll.s = 0.0;
 
-    pitch.kp = 0.75;
+    pitch.kp = 1.0;
     pitch.ti = 10000000.0;
     pitch.td = 0.0;
     pitch.s = 0.0;

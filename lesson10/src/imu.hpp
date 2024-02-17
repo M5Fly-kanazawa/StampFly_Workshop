@@ -18,5 +18,4 @@ float imu_get_gyro_x(void);
 float imu_get_gyro_y(void);
 float imu_get_gyro_z(void);
 
-
 #endif

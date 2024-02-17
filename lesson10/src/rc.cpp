@@ -5,17 +5,14 @@
 
 volatile uint16_t Connect_flag = 0;
 
-//Telemetry相手のMAC ADDRESS 4C:75:25:AD:B6:6C
-//ATOM Lite (C): 4C:75:25:AE:27:FC
-//4C:75:25:AD:8B:20
-//4C:75:25:AF:4E:84
+//Telemetry相手のMAC ADDRESS
 //4C:75:25:AD:8B:20
 uint8_t TelemAddr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
 uint8_t MyMacAddr[6];
 
 esp_now_peer_info_t peerInfo;
 
-//RC
+//Sticks signal
 volatile float Stick[16];
 
 // 受信コールバック
@@ -52,17 +49,10 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   d_int[3] = recv_data[15];
   Stick[ELEVATOR]  = d_float;
 
-  Stick[BUTTON_ARM] = recv_data[16];
+  Stick[BUTTON_ARM]  = recv_data[16];
   Stick[BUTTON_FLIP] = recv_data[17];
   Stick[CONTROLMODE] = recv_data[18];
-  
   Stick[LOG] = 0.0;
-
-  //Normalize
-  //Stick[RUDDER] /= -RUDDER_MAX_JOYC;
-  //Stick[THROTTLE] /= THROTTLE_MAX_JOYC;
-  //Stick[AILERON] /= (0.5*3.14159);
-  //Stick[ELEVATOR] /= (0.5*3.14159);
   if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
   
 #if 0
@@ -71,8 +61,8 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
                                             Stick[AILERON],
                                             Stick[ELEVATOR],
                                             Stick[RUDDER],
-                                            Stick[BUTTON],
-                                            Stick[BUTTON_A],
+                                            Stick[BUTTON_ARM],
+                                            Stick[BUTTON_FLIP],
                                             Stick[CONTROLMODE],
                                             Stick[LOG]);
 #endif
@@ -104,7 +94,7 @@ void init_rc(void)
     ESP.restart();
   }
 
-  //ペアリング
+  //Peering
   uint8_t addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(peerInfo.peer_addr, addr, 6);
   peerInfo.channel = CHANNEL;
@@ -133,7 +123,7 @@ void init_rc(void)
     ESP.restart();
   }
 
-  //ペアリング
+  //Peering
   memcpy(peerInfo.peer_addr, TelemAddr, 6);
   peerInfo.channel = CHANNEL;
   peerInfo.encrypt = false;

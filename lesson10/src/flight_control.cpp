@@ -4,25 +4,20 @@
 #include "rc.hpp"
 #include "led.hpp"
 #include "imu.hpp"
-#include <math.h>
 #include "pid.hpp"
 #include "battery.hpp"
+#include <math.h>
 
 //Global variable
-const float Control_period = 0.0025f;//400Hz //制御周期
-volatile uint8_t Loop_flag = 0;
-uint32_t Loop_counter = 0;
-
-//ここから新しくかいたよ
-uint8_t Mode = 2;
+volatile uint8_t Loop_flag;
+uint32_t Loop_counter;
+uint8_t Mode;
 float Ref_t, Ref_p, Ref_q, Ref_r; 
 float RateP, RateQ, RateR;
 float DeltaP, DeltaQ, DeltaR;
 float DutyFR, DutyRR, DutyRL, DutyFL;
-float filteredFR, filteredRR, filteredRL, filteredFL;
-float BiasP=0.0, BiasQ=0.0, BiasR=0.0;
-
-void get_bias(void);
+float FilteredFR, FilteredRR, FilteredRL, FilteredFL;
+float BiasP, BiasQ, BiasR;
 
 //割り込み関数
 //Intrupt function
@@ -39,42 +34,6 @@ void init_interrupt(void)
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 2500, true);
   timerAlarmEnable(timer);
-}
-
-//Initialize Multi copter
-void init_copter(void)
-{
-  //Initialize Serial communication
-  USBSerial.begin(115200);
-  delay(1000);
-  USBSerial.printf("Init StampFly!\r\n");
-
-  //モータ設定
-  init_motor();
-  //RC設定
-  init_rc();
-  //LED設定
-  init_led(0);
-  board_tail_led(0,0);
-  board_bottom_led(0,0);
-  stamp_led(0,0);
-
-  //IMUの設定
-  imu_init();
-  imu_update();
-
-  //Battery
-  init_battery();
-
-  //PIDリセット
-  reset_pid();
-
-  //割り込み設定
-  init_interrupt();
-
-  //起動メッセージ
-  USBSerial.printf("Join StampFly!\r\n");
-  
 }
 
 void get_bias(void)
@@ -130,10 +89,10 @@ void mixing(void)
     DutyRR = 0.0;
     DutyRL = 0.0;
     DutyFL = 0.0;
-    filteredFR = 0.0;
-    filteredRR = 0.0;
-    filteredRL = 0.0;
-    filteredFL = 0.0;
+    FilteredFR = 0.0;
+    FilteredRR = 0.0;
+    FilteredRL = 0.0;
+    FilteredFL = 0.0;
   }
   else
   {
@@ -147,20 +106,19 @@ void mixing(void)
 void filter(void)
 {
   float kf = 0.8;
-  filteredFR = (1 - kf) * filteredFR + kf * DutyFR;
-  filteredRR = (1 - kf) * filteredRR + kf * DutyRR;
-  filteredRL = (1 - kf) * filteredRL + kf * DutyRL;
-  filteredFL = (1 - kf) * filteredFL + kf * DutyFL;
+  FilteredFR = (1 - kf) * FilteredFR + kf * DutyFR;
+  FilteredRR = (1 - kf) * FilteredRR + kf * DutyRR;
+  FilteredRL = (1 - kf) * FilteredRL + kf * DutyRL;
+  FilteredFL = (1 - kf) * FilteredFL + kf * DutyFL;
 }
 
 void set_duty(void)
 {
-  set_motor_duty(FRONT_RIGHT_MOTOR, filteredFR);
-  set_motor_duty(REAR_RIGHT_MOTOR,  filteredRR);
-  set_motor_duty(REAR_LEFT_MOTOR,   filteredRL);
-  set_motor_duty(FRONT_LEFT_MOTOR,  filteredFL);
+  set_motor_duty(FRONT_RIGHT_MOTOR, FilteredFR);
+  set_motor_duty(REAR_RIGHT_MOTOR,  FilteredRR);
+  set_motor_duty(REAR_LEFT_MOTOR,   FilteredRL);
+  set_motor_duty(FRONT_LEFT_MOTOR,  FilteredFL);
 }
-
 
 void arm(void)
 {
@@ -171,20 +129,6 @@ void arm(void)
   filter();
   set_duty();
   board_tail_led(YELLOW, 1);
-
-  #if 0
-  USBSerial.printf(">BiasP:%9.6f\n", BiasP);
-  USBSerial.printf(">RateP:%9.6f\n", RateP);
-  USBSerial.printf(">BiasQ:%9.6f\n", BiasQ);
-  USBSerial.printf(">RateQ:%9.6f\n", RateQ);
-  USBSerial.printf(">BiasR:%9.6f\n", BiasR);
-  USBSerial.printf(">RateR:%9.6f\n", RateR);
-  USBSerial.printf(">filteredFR:%9.6f\n", filteredFR);
-  USBSerial.printf(">filteredRR:%9.6f\n", filteredRR);
-  USBSerial.printf(">filteredRL:%9.6f\n", filteredRL);
-  USBSerial.printf(">filteredFL:%9.6f\n", filteredFL);
-  USBSerial.printf(">bat:%9.6f\n", get_voltage());
-  #endif
 }
 
 void disarm(void)
@@ -200,10 +144,10 @@ void mode(void)
   static uint16_t state =0;
   
   if(Mode == 2)return;
-
+  
   if (Stick[BUTTON_ARM] > 0)flag++;
   else flag = 0;
-
+  
   if (flag == 30){
       Mode = (~Mode)&1;
       state = 1;
@@ -215,6 +159,64 @@ void mode(void)
     flag = 0;
     state = 0;
   }
+}
+
+void init_variables(void)
+{
+  Loop_flag = 0;
+  Loop_counter = 0;
+  Mode = 2;
+  Ref_t = 0;
+  Ref_p = 0;
+  Ref_q = 0;
+  Ref_r = 0; 
+  RateP = 0;
+  RateQ = 0;
+  RateR = 0;
+  DeltaP = 0;
+  DeltaQ = 0;
+  DeltaR = 0;
+  DutyFR = 0;
+  DutyRR = 0;
+  DutyRL = 0;
+  DutyFL = 0;
+  FilteredFR = 0;
+  FilteredRR = 0;
+  FilteredRL = 0;
+  FilteredFL = 0;
+  BiasP = 0;
+  BiasQ = 0;
+  BiasR = 0;
+}
+
+//Initialize Multi copter
+void init_copter(void)
+{
+  //Initialize Serial communication
+  USBSerial.begin(115200);
+  //Initialize global variables
+  init_variables();
+  //モータ設定
+  init_motor();
+  //RC設定
+  init_rc();
+  //LED設定
+  init_led(0);
+  board_tail_led(0,0);
+  board_bottom_led(0,0);
+  stamp_led(0,0);
+  //IMUの設定
+  imu_init();
+  imu_update();
+  //Battery監視初期化
+  init_battery();
+  //PIDリセット
+  reset_pid();
+  //割り込み設定
+  init_interrupt();
+  //起動メッセージ
+  delay(1000);
+  USBSerial.printf("Enjoy StampFly flight!\r\n");
 }
 
 //Main loop

@@ -7,7 +7,6 @@ void init_battery(void)
 {
   Wire1.begin(3, 4,400000UL);
   ina3221.begin(&Wire1);
-  INA3221 ina3221(INA3221_ADDR40_GND);
 }
 
 float get_voltage(void)

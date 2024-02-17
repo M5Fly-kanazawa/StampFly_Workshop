@@ -1,4 +1,3 @@
-//pid.cpp
 #include "pid.hpp"
 
 #define SMAX 30000.0

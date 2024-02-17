@@ -100,7 +100,8 @@ void get_bias(void)
 
 void receive(void)
 {
-  Ref_t = Stick[THROTTLE];
+  Ref_t = 1.5*Stick[THROTTLE];
+  if(Ref_t>1.0)Ref_t = 1.0;
   Ref_p = 120*PI*Stick[AILERON]/180.0; 
   Ref_q = 120*PI*Stick[ELEVATOR]/180.0; 
   Ref_r = 120*PI*Stick[RUDDER]/180.0;
@@ -122,7 +123,7 @@ void pid_control(void)
 
 void mixing(void)
 {
-  if (Ref_t <0.1)
+  if (Ref_t <0.3)
   {
     stop_motor();
     reset_pid();
@@ -142,7 +143,6 @@ void mixing(void)
     DutyRL = Ref_t +( 0.25*DeltaP - 0.25*DeltaQ + 0.25*DeltaR)/3.7;
     DutyFL = Ref_t +( 0.25*DeltaP + 0.25*DeltaQ - 0.25*DeltaR)/3.7;
   }
-
 }
 
 void filter(void)

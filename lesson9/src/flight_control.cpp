@@ -94,7 +94,7 @@ void get_bias(void)
     Mode = 0;
   }
   Loop_counter ++;
-  USBSerial.printf("%6.9f\n", BiasP);
+  //USBSerial.printf("%6.9f\n", BiasP);
   board_tail_led(PERPLE, 1);
 }
 

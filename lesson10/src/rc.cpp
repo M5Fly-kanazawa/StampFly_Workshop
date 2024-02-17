@@ -156,6 +156,14 @@ void send_peer_info(void)
   esp_now_send(peerInfo.peer_addr, data, 7);
 }
 
+uint8_t send_float(float x)
+{
+  esp_err_t result;
+  result = esp_now_send(peerInfo.peer_addr, data, 4);
+}
+
+
+
 uint8_t send_telemetry(uint8_t* data, uint16_t datalen)
 {
   static uint32_t cnt=0;

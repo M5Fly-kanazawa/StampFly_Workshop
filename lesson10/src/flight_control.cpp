@@ -244,7 +244,7 @@ void loop_400Hz(void)
     arm();
   }
 
-  if(get_voltage()<3.3)board_tail_led(POWEROFFCOLOR, 1);
+  if(get_voltage()<3.35)board_tail_led(POWEROFFCOLOR, 1);
   USBSerial.printf(">bat:%9.6f\n", get_voltage());
 
   imu_update();

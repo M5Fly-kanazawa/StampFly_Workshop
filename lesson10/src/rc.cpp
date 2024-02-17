@@ -156,10 +156,29 @@ void send_peer_info(void)
   esp_now_send(peerInfo.peer_addr, data, 7);
 }
 
+void float2byte(float x, uint8_t* dst)
+{
+  uint8_t* dummy;
+  dummy = (uint8_t*)&x;
+  dst[0]=dummy[0];
+  dst[1]=dummy[1];
+  dst[2]=dummy[2];
+  dst[3]=dummy[3];
+}
+
 uint8_t send_float(float x)
 {
+
+  uint8_t f2i[4];
+  uint8_t senddata[6];
   esp_err_t result;
-  result = esp_now_send(peerInfo.peer_addr, data, 4);
+
+  senddata[0]=0;
+  senddata[1]=0;
+  float2byte(x, f2i);
+  memcpy(&senddata[2], f2i, 4);
+  result = esp_now_send(peerInfo.peer_addr, senddata, 6);
+  return 1;
 }
 
 

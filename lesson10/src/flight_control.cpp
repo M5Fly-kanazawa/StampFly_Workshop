@@ -243,8 +243,10 @@ void loop_400Hz(void)
     arm();
   }
 
-  if(get_voltage()<3.3)board_tail_led(POWEROFFCOLOR, 1);
-  USBSerial.printf(">bat:%9.6f\n", get_voltage());
+  //if(get_voltage()<3.3)board_tail_led(POWEROFFCOLOR, 1);
+  //USBSerial.printf(">bat:%9.6f\n", get_voltage());
+  //float volt = get_voltage();
+  //send_float(volt);
 
   imu_update();
   FastLED.show();

@@ -44,7 +44,7 @@ void reset_pid(void)
 {
     roll.kp = 0.6;
     roll.ti = 10000000.0;
-    roll.td = 0.0;;
+    roll.td = 0.0;
     roll.s = 0.0;
 
     pitch.kp = 0.75;

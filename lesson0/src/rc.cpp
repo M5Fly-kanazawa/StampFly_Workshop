@@ -12,6 +12,7 @@ volatile uint16_t Connect_flag = 0;
 //4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
 //4C:75:25:AD:8B:20
+//4C:75:25:AD:8B:20 赤テープ　ATOM lite
 uint8_t TelemAddr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
 uint8_t MyMacAddr[6];
 

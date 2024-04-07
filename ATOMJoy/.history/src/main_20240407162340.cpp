@@ -420,7 +420,7 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("ATOMJoy %02X:%02X", Addr2[4],Addr2[5]);
+      M5.Lcd.printf("ATOMJoy %02X:%02X", Addr2);
       break;
     case 1:
       M5.Lcd.printf("BAT1: %4.1fV", Battery_voltage[0]);

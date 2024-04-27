@@ -52,7 +52,7 @@ uint8_t Addr2[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 //Channel
 uint8_t Ch_counter;
-volatile uint8_t Received_flag=0;
+volatile uint8_t Received_flag = 0;
 volatile uint8_t Channel = CHANNEL;
 
 void rc_init(void);
@@ -71,6 +71,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   Addr2[3] = recv_data[4];
   Addr2[4] = recv_data[5];
   Addr2[5] = recv_data[6];
+  USBSerial.printf("Receive !\n");
 }
 
 #define BUF_SIZE 128
@@ -145,7 +146,6 @@ void rc_init(uint8_t ch)
     ESP.restart();
   }
 
-  //ペアリング
   memset(&peerInfo, 0, sizeof(peerInfo));
   memcpy(peerInfo.peer_addr, Addr1, 6);
   peerInfo.channel = ch;
@@ -160,10 +160,15 @@ void rc_init(uint8_t ch)
 
 void peering(void)
 {
+  uint8_t break_flag;
+  //StampFlyはMACアドレスをFF:FF:FF:FF:FF:FFとして
+  //StampFlyのMACアドレスをでブロードキャストする
+  //その際にChannelが機体と送信機で同一でない場合は受け取れない
   // ESP-NOWコールバック登録
   esp_now_register_recv_cb(OnDataRecv);
+
   //ペアリング
-  Ch_counter =1;
+  Ch_counter = 1;
   while(1)
   {
     USBSerial.printf("Try channel %02d.\n\r", Ch_counter);
@@ -176,9 +181,19 @@ void peering(void)
     esp_wifi_set_channel(Ch_counter, WIFI_SECOND_CHAN_NONE);
 
     //Wait receive StampFly MAC Address
-    uint32_t counter=1;
-    usleep(100);
-    if (Received_flag==1)break;
+    //uint32_t counter=1;
+    //Channelをひとつづつ試していく
+    for (uint8_t i =0;i<100;i++)
+    {
+          break_flag = 0;
+          if (Received_flag == 1)
+          {
+            break_flag = 1;
+            break;
+          }
+          usleep(100);
+    }
+    if (break_flag)break;
     Ch_counter++;
     if(Ch_counter==15)Ch_counter=1;
   }

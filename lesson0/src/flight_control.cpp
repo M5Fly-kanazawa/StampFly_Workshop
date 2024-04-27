@@ -816,7 +816,7 @@ void angle_control(void)
       //Flip
       Flip_time = 0.4;
       Pitch_rate_reference= 0.0;
-      domega = 0.0025f*8.0*PI/Flip_time/Flip_time;
+      domega = 0.00225f*8.0*PI/Flip_time/Flip_time;//25->22->23->225
       flip_delay = 150;
       flip_step = (uint16_t)(Flip_time/0.0025f);
       if (Flip_counter < flip_delay)
@@ -844,7 +844,7 @@ void angle_control(void)
         Roll_rate_reference = Roll_rate_reference - domega;
         Thrust_command = T_flip*1.4;
       }
-      else if (Flip_counter < (flip_step + flip_delay + 100) )
+      else if (Flip_counter < (flip_step + flip_delay + 120) )
       {
         if(Ahrs_reset_flag == 0) 
         {

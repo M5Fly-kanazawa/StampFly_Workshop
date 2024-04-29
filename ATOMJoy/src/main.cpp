@@ -35,6 +35,7 @@ volatile uint8_t Loop_flag=0;
 float Timer = 0.0;
 float dTime = 0.01;
 uint8_t Timer_state = 0;
+uint8_t StickMode = 3;
 
 unsigned long stime,etime,dtime;
 byte axp_cnt=0;
@@ -254,6 +255,31 @@ void setup() {
     peering();
   }
 
+  joy_update();
+  StickMode = 3;
+  if(getOptionButton())StickMode = 2;
+  if (StickMode == 3)
+  {
+    THROTTLE = RIGHTY;
+    AILERON = LEFTX;
+    ELEVATOR = LEFTY;
+    RUDDER = RIGHTX;
+    ARM_BUTTON = RIGHT_STICK_BUTTON;
+    FLIP_BUTTON = LEFT_STICK_BUTTON;
+    MODE_BUTTON = RIGHT_BUTTON;
+    OPTION_BUTTON = LEFT_BUTTON;
+  }
+  else
+  {
+    THROTTLE = LEFTY;
+    AILERON = RIGHTX;
+    ELEVATOR = RIGHTY;
+    RUDDER = LEFTX;
+    ARM_BUTTON = LEFT_STICK_BUTTON;
+    FLIP_BUTTON = RIGHT_STICK_BUTTON;
+    MODE_BUTTON = RIGHT_BUTTON;
+    OPTION_BUTTON = LEFT_BUTTON;
+  }
 
   //Display init
   //M5.Lcd.fillScreen(RED);       // 画面全体の塗りつぶし
@@ -333,6 +359,12 @@ uint8_t check_mode_change(void)
 
 
 void loop() {
+  uint16_t _throttle;// = getThrottle();
+  uint16_t _phi;// = getAileron();
+  uint16_t _theta;// = getElevator();
+  uint16_t _psi;// = getRudder();
+
+
   while(Loop_flag==0);
   Loop_flag = 0;
   etime = stime;
@@ -369,17 +401,16 @@ void loop() {
     Timer_state = 0;
   }
 
-
   if (check_mode_change() == 1)
   {
     if (Mode==ANGLECONTROL)Mode=RATECONTROL;
     else Mode = ANGLECONTROL;
   }
 
-  uint16_t _throttle = getThrottle();
-  uint16_t _phi = getAileron();
-  uint16_t _theta = getElevator();
-  uint16_t _psi = getRudder();
+  _throttle = getThrottle();
+  _phi = getAileron();
+  _theta = getElevator();
+  _psi = getRudder();
 
   if(getArmButton()==1)
   {
@@ -435,15 +466,15 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("ATOMJoy %02X:%02X", Addr2[4],Addr2[5]);
+      M5.Lcd.printf("MAC ADR %02X:%02X", Addr2[4],Addr2[5]);
       break;
     case 1:
-      M5.Lcd.printf("BAT1: %4.1fV", Battery_voltage[0]);
+      M5.Lcd.printf("BAT 1:%4.1f 2:%4.1f", Battery_voltage[0],Battery_voltage[1]);
       //M5.Lcd.printf("X:%4d",xstick);
       break;
     case 2:
       #ifdef NEW_ATOM_JOY
-      M5.Lcd.printf("BAT2: %4.1fV", Battery_voltage[1]);
+      M5.Lcd.printf("MODE: %d", StickMode);
       //M5.Lcd.printf("X:%4d",xstick);
       #endif
       break;

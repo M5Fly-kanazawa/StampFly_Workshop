@@ -36,14 +36,25 @@
 
 
 //Control Mapping
-#define THROTTLE RIGHTY
-#define AILERON LEFTX
-#define ELEVATOR LEFTY
-#define RUDDER RIGHTX
-#define ARM_BUTTON RIGHT_STICK_BUTTON
-#define MODE_BUTTON RIGHT_BUTTON
-#define FLIP_BUTTON LEFT_STICK_BUTTON
-#define OPTION_BUTTON LEFT_BUTTON
+//#define THROTTLE RIGHTY
+//#define AILERON LEFTX
+//#define ELEVATOR LEFTY
+//#define RUDDER RIGHTX
+//#define ARM_BUTTON RIGHT_STICK_BUTTON
+//#define MODE_BUTTON RIGHT_BUTTON
+//#define FLIP_BUTTON LEFT_STICK_BUTTON
+//#define OPTION_BUTTON LEFT_BUTTON
+extern uint8_t THROTTLE;
+extern uint8_t AILERON;
+extern uint8_t ELEVATOR;
+extern uint8_t RUDDER;
+extern uint8_t ARM_BUTTON;
+extern uint8_t MODE_BUTTON;
+extern uint8_t FLIP_BUTTON;
+extern uint8_t OPTION_BUTTON;
+
+
+
 
 extern float Battery_voltage[2];
 

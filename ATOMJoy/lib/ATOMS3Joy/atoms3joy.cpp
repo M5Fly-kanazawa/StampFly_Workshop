@@ -8,6 +8,15 @@ uint8_t button_state[4]={0};
 uint8_t button_old_state[4]={0};
 uint8_t buffer[4];
 float Battery_voltage[2];
+uint8_t THROTTLE = RIGHTY;
+uint8_t AILERON = LEFTX;
+uint8_t ELEVATOR = LEFTY;
+uint8_t RUDDER = RIGHTX;
+uint8_t ARM_BUTTON = RIGHT_STICK_BUTTON;
+uint8_t MODE_BUTTON = RIGHT_BUTTON;
+uint8_t FLIP_BUTTON = LEFT_STICK_BUTTON;
+uint8_t OPTION_BUTTON = LEFT_BUTTON;
+
 
 uint16_t read_2byte_data(uint8_t address)
 {

@@ -2066,6 +2066,7 @@ VL53LX_Error VL53LX_get_device_results(
 	VL53LX_range_results_t       *prange_results)
 {
 
+
 	VL53LX_Error status = VL53LX_ERROR_NONE;
 
 	VL53LX_LLDriverData_t *pdev =

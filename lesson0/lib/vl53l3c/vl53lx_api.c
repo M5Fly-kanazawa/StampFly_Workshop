@@ -26,7 +26,6 @@
 #include "vl53lx_nvm.h"
 
 
-
 #define ZONE_CHECK 5
 
 #define LOG_FUNCTION_START(fmt, ...) \
@@ -994,14 +993,11 @@ static VL53LX_Error SetMeasurementData(VL53LX_DEV Dev,
 	pMultiRangingData->StreamCount = presults->stream_count;
 
 	ActiveResults = presults->active_results;
-	
 	if (ActiveResults < 1)
 
 		iteration = 1;
 	else
 		iteration = ActiveResults;
-
-	//iteration = 1;
 	for (i = 0; i < iteration; i++) {
 		pRangeData = &(pMultiRangingData->RangeData[i]);
 

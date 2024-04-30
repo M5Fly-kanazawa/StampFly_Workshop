@@ -60,10 +60,6 @@ extern "C"
 	(VL53LX_RESULT__HISTOGRAM_BIN_23_0_LSB - \
 		VL53LX_RESULT__INTERRUPT_STATUS + 1)
 
-//#define VL53LX_HISTOGRAM_BIN_DATA_I2C_SIZE_BYTES  2
-
-
-
 #ifdef __cplusplus
 }
 #endif

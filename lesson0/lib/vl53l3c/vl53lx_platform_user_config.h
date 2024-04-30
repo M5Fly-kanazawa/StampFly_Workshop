@@ -98,7 +98,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		 FW stream divide - value of 254 */
 #endif
 
-#define VL53LX_MAX_RANGE_RESULTS        4
+#define VL53LX_MAX_RANGE_RESULTS              4
 #define VL53LX_BUFFER_SIZE              5
 
 	/*!< Sets the maximum number of targets distances the histogram

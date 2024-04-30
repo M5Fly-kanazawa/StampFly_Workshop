@@ -5,8 +5,10 @@
 
 Alt_kalman::Alt_kalman(){};
 
-void Alt_kalman::update(float z_sens, float accel)
+void Alt_kalman::update(float z_sens, float accel, float h)
 {
+        step = h;
+
         //x:estimate x_:predict
 
         //predict state

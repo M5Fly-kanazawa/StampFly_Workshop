@@ -34,12 +34,12 @@ class Alt_kalman
     float R = 0.05*0.05;
 
     public:
-    //setep
+    //step
     float step=1.0/30.0;
     //state
     float Velocity=0.0, Altitude=0.0;
     Alt_kalman();
-    void update(float z_sens, float accel);
+    void update(float z_sens, float accel, float h);
 
 };
 

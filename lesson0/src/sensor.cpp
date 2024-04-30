@@ -1,6 +1,7 @@
 #include "sensor.hpp"
 #include "imu.hpp"
 #include "tof.hpp" 
+#include "flight_control.hpp"
 
 /************ BEEP ************/
 //BeepPWM出力Pinのアサイン
@@ -213,6 +214,9 @@ float sensor_read(void)
   static float dp, dq, dr; 
   static uint16_t dcnt=0u;
   uint16_t dist;
+  static float alt_time = 0.0;
+  static float old_alt_time = 0.0;
+  static uint8_t first_flag = 0;
   const uint8_t interval = 400/30+1;
 
   uint32_t st = micros();
@@ -262,7 +266,7 @@ float sensor_read(void)
 
   #if 1
   acc_norm = sqrt(Accel_x_raw*Accel_x_raw + Accel_y_raw*Accel_y_raw + Accel_z_raw*Accel_z_raw);
-  Acc_norm = acc_filter.update(acc_norm);
+  Acc_norm = acc_filter.update(acc_norm ,Control_period);
   if (Acc_norm>3.8) 
   {
     OverG_flag = 1;
@@ -272,7 +276,7 @@ float sensor_read(void)
 
   //Battery voltage check 
   Voltage = ina3221.getVoltage(INA3221_CH2);
-  filterd_v = voltage_filter.update(Voltage);
+  filterd_v = voltage_filter.update(Voltage, Control_period);
 
   if(Under_voltage_flag != UNDER_VOLTAGE_COUNT){
     if (filterd_v < POWER_LIMIT) Under_voltage_flag ++;
@@ -294,9 +298,14 @@ float sensor_read(void)
       Alt_control_ok = 1;
       dcnt=0u;
 
-      EstimatedAltitude.update(Altitude/1000.0, -(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset) );
+      old_alt_time = alt_time;
+      alt_time = micros()*1.0e-6;
+      float h = alt_time - old_alt_time;
+      if(first_flag == 1) EstimatedAltitude.update(Altitude/1000.0, -(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), h);
+      else first_flag = 1;
       Altitude2 = EstimatedAltitude.Altitude;
       Alt_velocity = EstimatedAltitude.Velocity;
+      USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity);
     }
   }
   else dcnt++;

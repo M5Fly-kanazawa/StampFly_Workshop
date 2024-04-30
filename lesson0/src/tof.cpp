@@ -97,7 +97,11 @@ uint16_t tof_range_get(VL53LX_DEV dev)
   VL53LX_MultiRangingData_t MultiRangingData;
   VL53LX_MultiRangingData_t *pMultiRangingData=&MultiRangingData;
 
+  //uint32_t start_time = micros();
   VL53LX_GetMultiRangingData(dev, pMultiRangingData);
+  //uint32_t end_time = micros();
+  //USBSerial.printf("ToF Time%f\n", (float)(end_time - start_time)*1.0e-6);
+
   uint8_t no_of_object_found=pMultiRangingData->NumberOfObjectsFound;
   if(no_of_object_found!=0)
   {

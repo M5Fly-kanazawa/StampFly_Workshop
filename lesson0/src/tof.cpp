@@ -105,12 +105,12 @@ uint16_t tof_range_get(VL53LX_DEV dev)
   uint8_t no_of_object_found=pMultiRangingData->NumberOfObjectsFound;
   if(no_of_object_found!=0)
   {
-    range = MultiRangingData.RangeData[0].RangeMilliMeter;
+    range = MultiRangingData.RangeData[no_of_object_found-1].RangeMaxMilliMeter;
     #if 0
     for(uint8_t j=0;j<no_of_object_found;j++){
           if(j!=0)USBSerial.printf("\n\r                     ");
           USBSerial.printf("%d %5d %2.2f %2.2f ",
-                  MultiRangingData.RangeData[j].RangeStatus,
+                  MultiRangingData.RangeData[VL53LX_MAX_RANGE_RESULTS].RangeMaxMilliMeter,
                   MultiRangingData.RangeData[j].RangeMilliMeter,
                   MultiRangingData.RangeData[j].SignalRateRtnMegaCps/65536.0,
                   MultiRangingData.RangeData[j].AmbientRateRtnMegaCps/65536.0);

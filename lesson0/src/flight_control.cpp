@@ -147,16 +147,16 @@ CRGB led_esp[NUM_LEDS];
 CRGB led_onboard[2];
 
 //Altitude control PID gain
-const float alt_kp = 1.0f;
-const float alt_ti = 1000.0f;
-const float alt_td = 0.001f;
+const float alt_kp = 0.0f;
+const float alt_ti = 40.0f;
+const float alt_td = 0.00f;
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 //Altitude Control variables
 const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.8f;//0.5f;//12
-const float z_dot_ti = 100.0f;
+const float z_dot_kp = 0.125f;//0.5f;//12
+const float z_dot_ti = 2000.0f;
 const float z_dot_td = 0.001f;
 const float z_dot_eta = 0.125f;
 
@@ -164,10 +164,10 @@ const float z_dot_eta = 0.125f;
 volatile float Thrust0=0.0;
 uint8_t Alt_flag = 0;
 float Z_dot_ref = 0.0f;
-float Alt_max = 0.8;
+float Alt_max = 0.5;
 
 //高度目標
-volatile float Alt_ref = 0.25;
+volatile float Alt_ref = 0.5;
 
 //Function declaration
 void init_pwm();
@@ -333,7 +333,7 @@ void loop_400Hz(void)
     Angle_control_flag = 0;
     Thrust0 = 0.0;
     Alt_flag = 0;
-    Alt_ref = 0.8f;
+    Alt_ref = 0.5f;
     #endif
 
   }

@@ -1,4 +1,6 @@
 //Controller for M5Fly
+//#define DEBUG
+
 #include <Arduino.h>
 #include <M5AtomS3.h>
 #include <WiFi.h>
@@ -36,12 +38,13 @@ float Timer = 0.0;
 float dTime = 0.01;
 uint8_t Timer_state = 0;
 uint8_t StickMode = 3;
+uint32_t espnow_version;
 
 unsigned long stime,etime,dtime;
 byte axp_cnt=0;
 
 char data[140];
-uint8_t senddata[19];
+uint8_t senddata[22];//19->22
 uint8_t disp_counter=0;
 
 //StampFly MAC ADDRESS
@@ -135,7 +138,7 @@ void load_data(void)
   SPIFFS.end();
 }
 
-void rc_init(uint8_t ch)
+void rc_init(uint8_t ch, uint8_t* addr)
 {  
   // ESP-NOW初期化
   WiFi.mode(WIFI_STA);
@@ -148,7 +151,7 @@ void rc_init(uint8_t ch)
   }
 
   memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, Addr1, 6);
+  memcpy(peerInfo.peer_addr, addr, 6);
   peerInfo.channel = ch;
   peerInfo.encrypt = false;
   uint8_t peer_mac_addre;
@@ -198,18 +201,22 @@ void peering(void)
     Ch_counter++;
     if(Ch_counter==15)Ch_counter=1;
   }
+  Channel = Ch_counter;
+
+  save_data();
 
   USBSerial.printf("Channel:%02d\n\r", Channel);
-  USBSerial.printf("MAC:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
+  USBSerial.printf("MAC2:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
                     Addr2[0],Addr2[1],Addr2[2],Addr2[3],Addr2[4],Addr2[5]);
-  save_data();
+  USBSerial.printf("MAC1:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
+                    Addr1[0],Addr1[1],Addr1[2],Addr1[3],Addr1[4],Addr1[5]);
 
   //Peering
   while (esp_now_del_peer(Addr1) != ESP_OK) {
     Serial.println("Failed to delete peer1");
   }
   memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, Addr2, 6);
+  memcpy(peerInfo.peer_addr, Addr2, 6);//Addr1->Addr2 ////////////////////////////
   peerInfo.channel = Channel;
   peerInfo.encrypt = false;
   while (esp_now_add_peer(&peerInfo) != ESP_OK) 
@@ -242,7 +249,6 @@ void setup() {
   M5.begin();
   Wire1.begin(38, 39, 400*1000);
   load_data();
-  rc_init(Channel);
   M5.update();  
   M5.Lcd.setRotation( 2 );
   M5.Lcd.setTextFont(2);
@@ -250,10 +256,16 @@ void setup() {
   
   if(M5.Btn.isPressed())
   {
+    rc_init(1, Addr1);
     USBSerial.printf("Button pressed!\n\r");
     M5.Lcd.println("Peering...");
     peering();
   }
+  #ifdef DEBUG
+  else rc_init(Channel, Addr1);
+  #else
+  else rc_init(Channel, Addr2);
+  #endif
 
   joy_update();
   StickMode = 3;
@@ -280,15 +292,6 @@ void setup() {
     MODE_BUTTON = RIGHT_BUTTON;
     OPTION_BUTTON = LEFT_BUTTON;
   }
-
-  //Display init
-  //M5.Lcd.fillScreen(RED);       // 画面全体の塗りつぶし
-  //M5.Lcd.setCursor(9, 10);      // カーソル位置の指定
-  //M5.Lcd.setTextFont(1);        // フォントの指定
-  //M5.Lcd.setTextSize(2);        // フォントサイズを指定（倍数）
-  //M5.Lcd.setTextColor(WHITE, RED);
-  //M5.Lcd.println("AtomFly2.0");           
-  //for (uint8_t i=0;i<50;i++)show_battery_info();
 
   byte error, address;
   int nDevices;
@@ -325,6 +328,10 @@ void setup() {
   else
     USBSerial.println("done\n");
 
+  esp_now_get_version(&espnow_version);
+  USBSerial.printf("Version %d\n", espnow_version);
+
+
   //割り込み設定
   timer = timerBegin(1, 80, true);
   timerAttachInterrupt(timer, &onTimer, true);
@@ -356,7 +363,6 @@ uint8_t check_mode_change(void)
   //USBSerial.printf("%d %d\n\r", state, flag);
   return state;
 }
-
 
 void loop() {
   uint16_t _throttle;// = getThrottle();
@@ -427,37 +433,50 @@ void loop() {
 
   uint8_t* d_int;
   
+  //ブロードキャストの混信を防止するためこの機体のMACアドレスに送られてきたものか判断する
+  senddata[0] = peerInfo.peer_addr[3];////////////////////////////
+  senddata[1] = peerInfo.peer_addr[4];////////////////////////////
+  senddata[2] = peerInfo.peer_addr[5];////////////////////////////
+
   d_int = (uint8_t*)&Psi;
-  senddata[0]=d_int[0];
-  senddata[1]=d_int[1];
-  senddata[2]=d_int[2];
-  senddata[3]=d_int[3];
+  senddata[3]=d_int[0];
+  senddata[4]=d_int[1];
+  senddata[5]=d_int[2];
+  senddata[6]=d_int[3];
 
   d_int = (uint8_t*)&Throttle;
-  senddata[4]=d_int[0];
-  senddata[5]=d_int[1];
-  senddata[6]=d_int[2];
-  senddata[7]=d_int[3];
+  senddata[7]=d_int[0];
+  senddata[8]=d_int[1];
+  senddata[9]=d_int[2];
+  senddata[10]=d_int[3];
 
   d_int = (uint8_t*)&Phi;
-  senddata[8]=d_int[0];
-  senddata[9]=d_int[1];
-  senddata[10]=d_int[2];
-  senddata[11]=d_int[3];
+  senddata[11]=d_int[0];
+  senddata[12]=d_int[1];
+  senddata[13]=d_int[2];
+  senddata[14]=d_int[3];
 
   d_int = (uint8_t*)&Theta;
-  senddata[12]=d_int[0];
-  senddata[13]=d_int[1];
-  senddata[14]=d_int[2];
-  senddata[15]=d_int[3];
+  senddata[15]=d_int[0];
+  senddata[16]=d_int[1];
+  senddata[17]=d_int[2];
+  senddata[18]=d_int[3];
 
-  senddata[16]=getArmButton();
-  senddata[17]=getFlipButton();
-  senddata[18]=Mode;
+  senddata[19]=getArmButton();
+  senddata[20]=getFlipButton();
+  senddata[21]=Mode;
   
   //送信
   esp_err_t result = esp_now_send(peerInfo.peer_addr, senddata, sizeof(senddata));
-
+  #ifdef DEBUG
+  USBSerial.printf("%02X:%02X:%02X:%02X:%02X:%02X\n",
+    peerInfo.peer_addr[0],
+    peerInfo.peer_addr[1],
+    peerInfo.peer_addr[2],
+    peerInfo.peer_addr[3],
+    peerInfo.peer_addr[4],
+    peerInfo.peer_addr[5]);
+  #endif
   //Display information
   //float vbat =0.0;// M5.Axp.GetBatVoltage();
   //int8_t bat_charge_p = int8_t((vbat - 3.0) / 1.2 * 100);
@@ -466,7 +485,7 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("MAC ADR %02X:%02X", Addr2[4],Addr2[5]);
+      M5.Lcd.printf("MAC ADR %02X:%02X", peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
       break;
     case 1:
       M5.Lcd.printf("BAT 1:%4.1f 2:%4.1f", Battery_voltage[0],Battery_voltage[1]);
@@ -482,7 +501,7 @@ void loop() {
       M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
       break;
     case 4:
-      M5.Lcd.printf("CHL: %02d",Channel);
+      M5.Lcd.printf("CHL: %02d",peerInfo.channel);
       break;
     case 5:
       if( Mode == ANGLECONTROL )      M5.Lcd.printf("-STABILIZE-");

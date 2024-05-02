@@ -305,7 +305,7 @@ float sensor_read(void)
       else first_flag = 1;
       Altitude2 = EstimatedAltitude.Altitude;
       Alt_velocity = EstimatedAltitude.Velocity;
-      USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+      //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
     }
   }
   else dcnt++;

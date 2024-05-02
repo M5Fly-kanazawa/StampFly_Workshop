@@ -3,6 +3,7 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 
+
 //esp_now_peer_info_t slave;
 
 volatile uint16_t Connect_flag = 0;
@@ -12,17 +13,21 @@ volatile uint16_t Connect_flag = 0;
 //4C:75:25:AD:8B:20
 //4C:75:25:AF:4E:84
 //4C:75:25:AD:8B:20
-//4C:75:25:AD:8B:20 赤テープ　ATOM lite
+//4C:75:25:AD:8B:20 赤水玉テープ　ATOM lite
 uint8_t TelemAddr[6] = {0x4C, 0x75, 0x25, 0xAD, 0x8B, 0x20};
-uint8_t MyMacAddr[6];
-
+//uint8_t TelemAddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+volatile uint8_t MyMacAddr[6];
+volatile uint8_t Rc_err_flag=0;
 esp_now_peer_info_t peerInfo;
 
 //RC
 volatile float Stick[16];
+volatile uint8_t Recv_MAC[3];
 
 // 受信コールバック
+//void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
+
 {
   Connect_flag=0;
 
@@ -67,35 +72,52 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
 
 #else
-  d_int = (uint8_t*)&d_float;
+
+  Recv_MAC[0]=recv_data[0];
+  Recv_MAC[1]=recv_data[1];
+  Recv_MAC[2]=recv_data[2];
+
+//||(recv_data[1]!=MyMacAddr[4])||(recv_data[2]!=MyMacAddr[5]
+
+  if ((recv_data[0]==MyMacAddr[3])&&(recv_data[1]==MyMacAddr[4])&&(recv_data[2]==MyMacAddr[5]))
+  {
+    Rc_err_flag = 0;
+  }
+  else 
+  {
+    Rc_err_flag = 1;
+    return;
+  }
   
-  d_int[0] = recv_data[0];
-  d_int[1] = recv_data[1];
-  d_int[2] = recv_data[2];
-  d_int[3] = recv_data[3];
+
+  d_int = (uint8_t*)&d_float;  
+  d_int[0] = recv_data[3];
+  d_int[1] = recv_data[4];
+  d_int[2] = recv_data[5];
+  d_int[3] = recv_data[6];
   Stick[RUDDER]=d_float;
 
-  d_int[0] = recv_data[4];
-  d_int[1] = recv_data[5];
-  d_int[2] = recv_data[6];
-  d_int[3] = recv_data[7];
+  d_int[0] = recv_data[7];
+  d_int[1] = recv_data[8];
+  d_int[2] = recv_data[9];
+  d_int[3] = recv_data[10];
   Stick[THROTTLE]=d_float;
 
-  d_int[0] = recv_data[8];
-  d_int[1] = recv_data[9];
-  d_int[2] = recv_data[10];
-  d_int[3] = recv_data[11];
+  d_int[0] = recv_data[11];
+  d_int[1] = recv_data[12];
+  d_int[2] = recv_data[13];
+  d_int[3] = recv_data[14];
   Stick[AILERON]  = d_float;
 
-  d_int[0] = recv_data[12];
-  d_int[1] = recv_data[13];
-  d_int[2] = recv_data[14];
-  d_int[3] = recv_data[15];
+  d_int[0] = recv_data[15];
+  d_int[1] = recv_data[16];
+  d_int[2] = recv_data[17];
+  d_int[3] = recv_data[18];
   Stick[ELEVATOR]  = d_float;
 
-  Stick[BUTTON_ARM] = recv_data[16];
-  Stick[BUTTON_FLIP] = recv_data[17];
-  Stick[CONTROLMODE] = recv_data[18];
+  Stick[BUTTON_ARM] = recv_data[19];
+  Stick[BUTTON_FLIP] = recv_data[20];
+  Stick[CONTROLMODE] = recv_data[21];
   
   Stick[LOG] = 0.0;
 
@@ -135,7 +157,7 @@ void rc_init(void)
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
 
-  WiFi.macAddress(MyMacAddr);
+  WiFi.macAddress((uint8_t*)MyMacAddr);
   USBSerial.printf("MAC ADDRESS: %02X:%02X:%02X:%02X:%02X:%02X\r\n", 
                   MyMacAddr[0], MyMacAddr[1], MyMacAddr[2], MyMacAddr[3], MyMacAddr[4], MyMacAddr[5]);
 
@@ -146,7 +168,7 @@ void rc_init(void)
     ESP.restart();
   }
 
-  //ペアリング
+  //MACアドレスブロードキャスト
   uint8_t addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   memcpy(peerInfo.peer_addr, addr, 6);
   peerInfo.channel = CHANNEL;
@@ -162,7 +184,7 @@ void rc_init(void)
   for (uint16_t i=0; i<50; i++)
   {
     send_peer_info();
-    delay(1);
+    delay(10);
     USBSerial.printf("%d\n", i);
   }
 
@@ -195,7 +217,7 @@ void send_peer_info(void)
 {
   uint8_t data[7];
   data[0] = CHANNEL;
-  memcpy(&data[1], MyMacAddr, 6);
+  memcpy(&data[1], (uint8_t*)MyMacAddr, 6);
   esp_now_send(peerInfo.peer_addr, data, 7);
 }
 

@@ -352,6 +352,15 @@ void loop_400Hz(void)
     Interval_time*1000.0,
     Altitude );
   #endif
+  
+  #if 0
+  //受信MACアドレス表示
+  USBSerial.printf("%02X:%02X:%02X:%02X:%02X:%02X:Rc_err_flag=%d\n",
+    Recv_MAC[0],MyMacAddr[3],
+    Recv_MAC[1],MyMacAddr[4],
+    Recv_MAC[2],MyMacAddr[5],
+    Rc_err_flag);
+  #endif
 
   //End of Loop_400Hz function
 }
@@ -396,11 +405,12 @@ void led_drive(void)
     else Led_color = 0xDC669B;
 
     if(Alt_flag == 1) Led_color = 0x555555;
+    if(Rc_err_flag == 1) Led_color = 0xff0000;
 
     if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) onboard_led(Led_color, 1);
     else onboard_led(POWEROFFCOLOR,1);
-    
   }
+
   else if (Mode == PARKING_MODE)
   {
     if(Under_voltage_flag < UNDER_VOLTAGE_COUNT)
@@ -515,7 +525,7 @@ void get_command(void)
   //  Thrust_command = 0.0;
   //}
 
-  uint8_t Throttle_control_mode = 1;
+  uint8_t Throttle_control_mode = 0;
   
 
   //Thrust control

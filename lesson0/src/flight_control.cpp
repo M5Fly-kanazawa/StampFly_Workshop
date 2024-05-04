@@ -1,5 +1,9 @@
 //Lesson 0
 #include "flight_control.hpp"
+#include "rc.hpp"
+#include "pid.hpp"
+#include "sensor.hpp"
+#include "led.hpp"
 
 //#define DEBUG
 //#define TEST
@@ -68,7 +72,6 @@ volatile uint32_t S_time=0,E_time=0,D_time=0,Dt_time=0;
 uint8_t AngleControlCounter=0;
 uint16_t RateControlCounter=0;
 uint16_t OffsetCounter=0;
-uint16_t LedBlinkCounter=0;
 
 //Motor Duty 
 volatile float FrontRight_motor_duty=0.0f;
@@ -100,10 +103,6 @@ volatile float Roll_angle_command=0.0f, Pitch_angle_command=0.0f, Yaw_angle_comm
 volatile float Roll_angle_offset=0.0f, Pitch_angle_offset=0.0f, Yaw_angle_offset=0.0f;  
 volatile float Elevator_center=0.0f, Aileron_center=0.0f, Rudder_center=0.0f;
 
-//Telemetory
-uint8_t Telem_mode=0;
-uint8_t Telem_cnt = 0;
-
 //Machine state
 float Timevalue=0.0f;
 uint8_t Mode = INIT_MODE;
@@ -116,8 +115,8 @@ uint8_t BtnA_on_flag = 0;
 uint8_t BtnA_off_flag =1;
 volatile uint8_t Loop_flag = 0;
 volatile uint8_t Angle_control_flag = 0;
-uint32_t Led_color = 0x000000;
-uint32_t Led_color2 = 255;
+//uint32_t Led_color = 0x000000;
+//uint32_t Led_color2 = 255;
 
 //flip
 float FliRoll_rate_time = 2.0;
@@ -143,28 +142,39 @@ Filter Duty_fl;
 Filter Duty_rr;
 Filter Duty_rl;
 
-CRGB led_esp[NUM_LEDS];
-CRGB led_onboard[2];
+//CRGB led_esp[NUM_LEDS];
+//CRGB led_onboard[2];
 
 //Altitude control PID gain
-const float alt_kp = 0.0f;
-const float alt_ti = 40.0f;
-const float alt_td = 0.00f;
+const float alt_kp = 2.0f;//2/10
+const float alt_ti = 100000.0f;//100
+const float alt_td = 0.0f;
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 //Altitude Control variables
+//1:kp=0.01 ti = 50 td=0.5 q =1.5 soso
+//2:kp=0.01 ti = 100 td=1 q =3 x 最後に下がる
+//2:kp=0.01 ti = 80 td=1 q =3 x 間欠上昇
+//2:kp=0.01 ti = 85 td=1 q =3 x 最後下がる
+//2:kp=0.01 ti = 95 td=1 q =3 x 最後下がる
+//2:kp=0.01 ti = 81 td=1 q =3 soso 上がるがだいぶキープ
+//2:kp=0.01 ti = 83 td=5 q =3 soso 下がる
+//2:kp=0.02 ti = 83 td=7 q =5 soso 下がる
+
 const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.125f;//0.5f;//12
-const float z_dot_ti = 2000.0f;
-const float z_dot_td = 0.001f;
+const float z_dot_kp = 0.15f;//0.085
+const float z_dot_ti = 7.0f;//
+const float z_dot_td = 0.01f;
 const float z_dot_eta = 0.125f;
 
 
 volatile float Thrust0=0.0;
 uint8_t Alt_flag = 0;
-float Z_dot_ref = 0.0f;
 float Alt_max = 0.5;
+
+//速度目標Z
+float Z_dot_ref = 0.0f;
 
 //高度目標
 volatile float Alt_ref = 0.5;
@@ -173,15 +183,15 @@ volatile float Alt_ref = 0.5;
 void init_pwm();
 void control_init();
 void variable_init(void);
-void onboard_led(CRGB p, uint8_t state);
-void esp_led(CRGB p, uint8_t state);
+//void onboard_led(CRGB p, uint8_t state);
+//void esp_led(CRGB p, uint8_t state);
 void get_command(void);
 void angle_control(void);
 void rate_control(void);
 void output_data(void);
 void output_sensor_raw_data(void);
 void motor_stop(void);
-void led_drive(void);
+//void led_drive(void);
 uint8_t judge_mode_change(void);
 uint8_t get_arming_button(void);
 uint8_t get_flip_button(void);
@@ -209,14 +219,12 @@ void init_copter(void)
   Mode = INIT_MODE;
 
   //Initialaze LED function
-  FastLED.addLeds<WS2812, PIN_LED_ONBORD, GRB>(led_onboard, 2);
-  FastLED.addLeds<WS2812, PIN_LED_ESP, GRB>(led_esp, 1);
-
-  led_esp[0]=RED;
-  led_onboard[0]=WHITE;
-  led_onboard[1]=WHITE;
-  FastLED.show();/////////////////////////////////////////////////////////////////////
-
+  led_init();
+  esp_led(RED, 1);
+  onboard_led1(WHITE, 1);
+  onboard_led2(WHITE, 1);
+  led_show();
+ 
   //Initialize Serial communication
   USBSerial.begin(115200);
   delay(2000);
@@ -271,7 +279,8 @@ void loop_400Hz(void)
   sense_time = sensor_read();
   uint32_t cs_time = micros();
 
-  led_drive();////////////////////////////////////////////////////////////////////////
+  //LED Drive
+  led_drive();
   
   //Begin Mode select
   if (Mode == INIT_MODE)
@@ -344,6 +353,7 @@ void loop_400Hz(void)
   uint32_t ce_time = micros();
   //if(Telem_cnt == 1)Dt_time = D_time - E_time;
   Dt_time = ce_time - cs_time;
+
   #ifdef DEBUG
   USBSerial.printf("Loop time(ms) %5.3f %5.3f %5.3f %5.3f Range %6.1f\n\r", 
     sense_time*1000.0, 
@@ -388,64 +398,6 @@ uint8_t judge_mode_change(void)
   //USBSerial.printf("%d %d\n\r", state, LockMode);
   return state;
 }
-
-void led_drive(void)
-{
-  if (Mode == AVERAGE_MODE)
-  {
-    onboard_led(PERPLE, 1);
-  }
-  else if(Mode == FLIGHT_MODE)
-  {
-    if(Control_mode == ANGLECONTROL)
-    {
-      if(Flip_flag==0)Led_color=0xffff00;
-      else Led_color = 0xFF9933;
-    }
-    else Led_color = 0xDC669B;
-
-    if(Alt_flag == 1) Led_color = 0x555555;
-    if(Rc_err_flag == 1) Led_color = 0xff0000;
-
-    if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) onboard_led(Led_color, 1);
-    else onboard_led(POWEROFFCOLOR,1);
-  }
-
-  else if (Mode == PARKING_MODE)
-  {
-    if(Under_voltage_flag < UNDER_VOLTAGE_COUNT)
-    {
-      //イルミネーション
-      if(LedBlinkCounter==0){//<10
-        if (Led_color2&0x800000)Led_color2 = (Led_color2<<1)|1;
-        else Led_color2=Led_color2<<1; 
-
-        if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) onboard_led(Led_color2, 1);
-        //else onboard_led(POWEROFFCOLOR,1);
-        LedBlinkCounter++;
-      }
-      LedBlinkCounter++;
-      if (LedBlinkCounter>20)LedBlinkCounter=0;
-    }
-    else
-    {
-      //水色点滅
-      if (LedBlinkCounter < 10) onboard_led(POWEROFFCOLOR,1);
-      else if (LedBlinkCounter < 200) onboard_led(POWEROFFCOLOR,0);
-      else LedBlinkCounter = 0;
-      LedBlinkCounter ++;
-    }
-  }
-
-  //Watch dog LED
-  if ( Dt_time>2550u )onboard_led(RED, 1);
-
-  //LED show
-  FastLED.show();
-  //USBSerial.printf("Time delta %f\n\r", (Elapsed_time - Old_Elapsed_time) );
-}
-
-
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -519,14 +471,12 @@ float altitude_control(uint8_t reset_flag)
 
 void get_command(void)
 {
+  uint8_t Throttle_control_mode = 0;
   Control_mode = Stick[CONTROLMODE];
 
   //if(OverG_flag == 1){
   //  Thrust_command = 0.0;
   //}
-
-  uint8_t Throttle_control_mode = 0;
-  
 
   //Thrust control
   float throttle_limit = 0.7;
@@ -610,66 +560,6 @@ void get_command(void)
   //  Stick[THROTTLE], Stick[RUDDER], Stick[AILERON], Stick[ELEVATOR]);
 
 }
-
-
-
-#if 0
-void get_command(void)
-{
-  Control_mode = Stick[CONTROLMODE];
-
-  //if(OverG_flag == 1){
-  //  Thrust_command = 0.0;
-  //}
-
-  //Throttle curve conversion　スロットルカーブ補正
-  float throttle_limit = 0.7;
-  float thlo = Stick[THROTTLE];
-  thlo = thlo/throttle_limit;
-  if (thlo>1.0f) thlo = 1.0f;
-  if (thlo<0.2f) thlo = 0.0f;
-  //Thrust_command = (2.95f*thlo-4.8f*thlo*thlo+2.69f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
-  Thrust_command = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
-  //Thrust_command = thlo*BATTERY_VOLTAGE;
-
-  #ifdef MINIJOYC
-  Roll_angle_command = 0.6*Stick[AILERON];
-  if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
-  if (Roll_angle_command> 1.0f)Roll_angle_command =  1.0f;  
-  Pitch_angle_command = 0.6*Stick[ELEVATOR];
-  if (Pitch_angle_command<-1.0f)Pitch_angle_command = -1.0f;
-  if (Pitch_angle_command> 1.0f)Pitch_angle_command =  1.0f;  
-  #else
-  Roll_angle_command = 0.4*Stick[AILERON];
-  if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
-  if (Roll_angle_command> 1.0f)Roll_angle_command =  1.0f;  
-  Pitch_angle_command = 0.4*Stick[ELEVATOR];
-  if (Pitch_angle_command<-1.0f)Pitch_angle_command = -1.0f;
-  if (Pitch_angle_command> 1.0f)Pitch_angle_command =  1.0f;  
-  #endif
-  Yaw_angle_command = Stick[RUDDER];
-  if (Yaw_angle_command<-1.0f)Yaw_angle_command = -1.0f;
-  if (Yaw_angle_command> 1.0f)Yaw_angle_command =  1.0f;  
-  //Yaw control
-  Yaw_rate_reference   = 2.0f * PI * (Yaw_angle_command - Rudder_center);
-
-  if (Control_mode == RATECONTROL)
-  {
-    Roll_rate_reference = 240*PI/180*Roll_angle_command;
-    Pitch_rate_reference = 240*PI/180*Pitch_angle_command;
-  }
-
-  // flip button check
-  if (Flip_flag == 0)
-  {
-    Flip_flag = get_flip_button();
-  }
-
-  //USBSerial.printf("%5.2f %5.2f %5.2f %5.2f \n\r", 
-  //  Stick[THROTTLE], Stick[RUDDER], Stick[AILERON], Stick[ELEVATOR]);
-
-}
-#endif
 
 void rate_control(void)
 {
@@ -907,33 +797,6 @@ void set_duty_fl(float duty){ledcWrite(FrontLeft_motor, (uint32_t)(255*duty));}
 void set_duty_rr(float duty){ledcWrite(RearRight_motor, (uint32_t)(255*duty));}
 void set_duty_rl(float duty){ledcWrite(RearLeft_motor, (uint32_t)(255*duty));}
 
-void onboard_led(CRGB p, uint8_t state)
-{
-  if (state ==1)
-  {
-    led_onboard[0]=p;
-    led_onboard[1]=p;
-  } 
-  else {
-    led_onboard[0]=0;
-    led_onboard[1]=0;
-  }
-   //Update LED
-  //FastLED.show();
-  return;
-}
-
-void esp_led(CRGB p, uint8_t state)
-{
-  if (state ==1) led_esp[0]=p;
-  else led_esp[0]=0;
-   //Update LED
-  //FastLED.show();
-  return;
-}
-
-
-
 void init_pwm(void)
 {
   ledcSetup(FrontLeft_motor, freq, resolution);
@@ -1008,310 +871,6 @@ uint8_t get_flip_button(void)
   }
   //USBSerial.println(state);
   return state;
-}
-
-const uint8_t MAXINDEX=98;
-
-void telemetry(void)
-{
-  uint8_t senddata[MAXINDEX]; 
-
-  if(Telem_mode==0)
-  {
-    Telem_mode = 1;
-    make_telemetry_header_data(senddata);
-
-    //Send !
-    telemetry_send(senddata, sizeof(senddata));
-  }  
-  else if(Mode > AVERAGE_MODE)
-  {
-    if (Telem_cnt == 0)telemetry_sequence();
-    Telem_cnt++;
-    if (Telem_cnt>10-1)Telem_cnt = 0;
-  }
-}
-
-
-void telemetry_sequence(void)
-{
-  uint8_t senddata[MAXINDEX]; 
-
-  switch (Telem_mode)
-  {
-    case 1:
-      make_telemetry_data(senddata);
-      //Send !
-      if(telemetry_send(senddata, sizeof(senddata))==1)esp_led(0x110000, 1);//Telemetory Reciver OFF
-      else esp_led(0x001100, 1);//Telemetory Reciver ON
-
-      //Telem_mode = 2;
-      break;
-  }
-}
-
-
-void make_telemetry_header_data(uint8_t* senddata)
-{
-  float d_float;
-  uint8_t d_int[4];
-  uint8_t index=0;  
-
-    index=2;
-    for (uint8_t i=0;i<(MAXINDEX-2)/4;i++)
-    {
-      data2log(senddata, 0.0f, index);
-      //d_float = 0.0;
-      //float2byte(d_float, d_int);
-      //append_data(senddata, d_int, index, 4);
-      index = index + 4;
-    }
-    //Telemetry Header
-    senddata[0]=99;
-    senddata[1]=99;
-    index=2;
-    //Roll_rate_kp
-    data2log(senddata, Roll_rate_kp, index);
-    //d_float = Roll_rate_kp;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Roll_rate_ti
-    data2log(senddata, Roll_rate_ti, index);
-    //d_float = Roll_rate_ti;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Roll_rate_td
-    data2log(senddata, Roll_rate_td, index);
-    //d_float = Roll_rate_td;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Roll_rate_eta
-    data2log(senddata, Roll_rate_eta, index);
-    //d_float = Roll_rate_eta;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-
-    //Pitch_rate_kp
-    data2log(senddata, Pitch_rate_kp, index);
-    //d_float = Pitch_rate_kp;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_rate_ti
-    data2log(senddata, Pitch_rate_ti, index);
-    //d_float = Pitch_rate_ti;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_rate_td
-    data2log(senddata, Pitch_rate_td, index);
-    //d_float = Pitch_rate_td;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_rate_eta
-    data2log(senddata, Pitch_rate_eta, index);
-    //d_float = Pitch_rate_eta;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-
-    //Yaw_rate_kp
-    data2log(senddata, Yaw_rate_kp, index);
-    //d_float = Yaw_rate_kp;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Yaw_rate_ti
-    data2log(senddata, Yaw_rate_ti, index);
-    //d_float = Yaw_rate_ti;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Yaw_rate_td
-    data2log(senddata, Yaw_rate_td, index);
-    //d_float = Yaw_rate_td;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Yaw_rate_eta
-    data2log(senddata, Yaw_rate_eta, index);
-    //d_float = Yaw_rate_eta;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-
-    //Rall_angle_kp
-    data2log(senddata, Rall_angle_kp, index);
-    //d_float = Rall_angle_kp;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Rall_angle_ti
-    data2log(senddata, Rall_angle_ti, index);
-    //d_float = Rall_angle_ti;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Rall_angle_td
-    data2log(senddata, Rall_angle_td, index);
-    //d_float = Rall_angle_td;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Rall_angle_eta
-    data2log(senddata, Rall_angle_eta, index);
-    //d_float = Rall_angle_eta;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_angle_kp
-    data2log(senddata, Pitch_angle_kp, index);
-    //d_float = Pitch_angle_kp;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_angle_ti
-    data2log(senddata, Pitch_angle_ti, index);
-    //d_float = Pitch_angle_ti;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_angle_td
-    data2log(senddata, Pitch_angle_td, index);
-    //d_float = Pitch_angle_td;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-    //Pitch_angle_eta
-    data2log(senddata, Pitch_angle_eta, index);
-    //d_float = Pitch_angle_eta;
-    //float2byte(d_float, d_int);
-    //append_data(senddata, d_int, index, 4);
-    index = index + 4;
-}
-
-void make_telemetry_data(uint8_t* senddata)
-{
-  const uint8_t MAXINDEX=98;
-  float d_float;
-  uint8_t d_int[4];
-  //uint8_t senddata[MAXINDEX]; 
-  uint8_t index=0;  
-
-  //Telemetry Header
-  senddata[0]=88;
-  senddata[1]=88;
-  index = 2;
-  //1 Time
-  data2log(senddata, Elapsed_time, index);
-  index = index + 4;
-  //2 delta Time
-  data2log(senddata, Interval_time, index);
-  index = index + 4;
-  //3 Roll_angle
-  data2log(senddata, (Roll_angle-Roll_angle_offset)*180/PI, index);
-  index = index + 4;
-  //4 Pitch_angle
-  data2log(senddata, (Pitch_angle-Pitch_angle_offset)*180/PI, index);
-  index = index + 4;
-  //5 Yaw_angle
-  data2log(senddata, (Yaw_angle-Yaw_angle_offset)*180/PI, index);
-  index = index + 4;
-  //6 P
-  data2log(senddata, (Roll_rate)*180/PI, index);
-  index = index + 4;
-  //7 Q
-  data2log(senddata, (Pitch_rate)*180/PI, index);
-  index = index + 4;
-  //8 R
-  data2log(senddata, (Yaw_rate)*180/PI, index);
-  index = index + 4;
-  //9 Roll_angle_reference
-  data2log(senddata, Roll_angle_reference*180/PI, index);
-  //data2log(senddata, 0.5f * 180.0f *Roll_angle_command, index);
-  index = index + 4;
-  //10 Pitch_angle_reference
-  data2log(senddata, Pitch_angle_reference*180/PI, index);
-  //data2log(senddata, 0.5 * 189.0f* Pitch_angle_command, index);
-  index = index + 4;
-  //11 P ref
-  data2log(senddata, Roll_rate_reference*180/PI, index);
-  index = index + 4;
-  //12 Q ref
-  data2log(senddata, Pitch_rate_reference*180/PI, index);
-  index = index + 4;
-  //13 R ref
-  data2log(senddata, Yaw_rate_reference*180/PI, index);
-  index = index + 4;
-  //14 T ref
-  data2log(senddata, Thrust_command/BATTERY_VOLTAGE, index);
-  index = index + 4;
-  //15 Voltage
-  data2log(senddata, Voltage, index);
-  index = index + 4;
-  //16 Accel_x_raw
-  data2log(senddata, Accel_x_raw, index);
-  index = index + 4;
-  //17 Accel_y_raw
-  data2log(senddata, Accel_y_raw, index);
-  index = index + 4;
-  //18 Accel_z_raw
-  data2log(senddata, Accel_z_raw, index);
-  index = index + 4;
-  //19 Alt Velocity
-  data2log(senddata, Alt_velocity, index);
-  index = index + 4;
-  //20 Z_dot_ref
-  data2log(senddata, Z_dot_ref, index);
-  index = index + 4;
-  //20 FrontRight_motor_duty
-  //data2log(senddata, FrontRight_motor_duty, index);
-  //index = index + 4;
-  //21 FrontLeft_motor_duty
-  data2log(senddata, FrontLeft_motor_duty, index);
-  index = index + 4;
-  //22 RearRight_motor_duty
-  data2log(senddata, RearRight_motor_duty, index);
-  index = index + 4;
-  //23 RearLeft_motor_duty
-  //data2log(senddata, RearLeft_motor_duty, index);
-  //23 Alt_ref
-  data2log(senddata, Alt_ref, index);
-  index = index + 4;
-  //24 Altitude2
-  data2log(senddata, Altitude2, index);
-  index = index + 4;
-}
-
-void data2log(uint8_t* data_list, float add_data, uint8_t index)
-{
-    uint8_t d_int[4];
-    float d_float = add_data;
-    float2byte(d_float, d_int);
-    append_data(data_list, d_int, index, 4);
-}
-
-void float2byte(float x, uint8_t* dst)
-{
-  uint8_t* dummy;
-  dummy = (uint8_t*)&x;
-  dst[0]=dummy[0];
-  dst[1]=dummy[1];
-  dst[2]=dummy[2];
-  dst[3]=dummy[3];
-}
-
-void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len)
-{
-  for(uint8_t i=index;i<index+len;i++)
-  {
-    data[i]=newdata[i-index];
-  }
 }
 
 void motor_stop(void)

@@ -243,10 +243,10 @@ uint8_t telemetry_send(uint8_t* data, uint16_t datalen)
   }
   else
   {
-    //送信でエラーが一度でも出た場合はそれ以降stateは１になる。
     error_flag = 1;
-    state = 1;
+    //state = 1;
   }
+  //一度送信エラーを検知してもしばらくしたら復帰する
   if (cnt>100)
   {
     error_flag = 0;
@@ -255,7 +255,7 @@ uint8_t telemetry_send(uint8_t* data, uint16_t datalen)
   cnt++;
   //USBSerial.printf("%6d %d %d\r\n", cnt, error_flag, esp_now_send_status);
 
-  return state;
+  return error_flag;
 }
 
 void rc_end(void)

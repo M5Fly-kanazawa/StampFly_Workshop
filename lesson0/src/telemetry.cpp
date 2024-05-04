@@ -1,12 +1,30 @@
-#include "log.hpp"
+#include "telemetry.hpp"
 
-#if 0
+#include "rc.hpp"
+#include "led.hpp"
+#include "sensor.hpp"
+#include "flight_control.hpp"
+
+uint8_t Telem_mode = 0;
+uint8_t Telem_cnt = 0;
+
+const uint8_t MAXINDEX=106;
+
+
+void telemetry_sequence(void);
+void make_telemetry_header_data(uint8_t* senddata);
+void make_telemetry_data(uint8_t* senddata);
+void data2log(uint8_t* data_list, float add_data, uint8_t index);
+void float2byte(float x, uint8_t* dst);
+void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len);
+
 void telemetry(void)
 {
   uint8_t senddata[MAXINDEX]; 
 
   if(Telem_mode==0)
   {
+    //Send header data
     Telem_mode = 1;
     make_telemetry_header_data(senddata);
 
@@ -15,12 +33,14 @@ void telemetry(void)
   }  
   else if(Mode > AVERAGE_MODE)
   {
+    const uint8_t N=10;
+    //N回に一度送信
     if (Telem_cnt == 0)telemetry_sequence();
     Telem_cnt++;
-    if (Telem_cnt>10-1)Telem_cnt = 0;
+    if (Telem_cnt>N-1)Telem_cnt = 0;
+    //telemetry_sequence();
   }
 }
-
 
 void telemetry_sequence(void)
 {
@@ -38,7 +58,6 @@ void telemetry_sequence(void)
       break;
   }
 }
-
 
 void make_telemetry_header_data(uint8_t* senddata)
 {
@@ -186,7 +205,7 @@ void make_telemetry_header_data(uint8_t* senddata)
 
 void make_telemetry_data(uint8_t* senddata)
 {
-  const uint8_t MAXINDEX=98;
+  //const uint8_t MAXINDEX=102;
   float d_float;
   uint8_t d_int[4];
   //uint8_t senddata[MAXINDEX]; 
@@ -203,7 +222,7 @@ void make_telemetry_data(uint8_t* senddata)
   data2log(senddata, Interval_time, index);
   index = index + 4;
   //3 Roll_angle
-  data2log(senddata, (Roll_angle-Roll_angle_offset)*180/PI, index);
+  data2log(senddata, (Roll_angle - Roll_angle_offset)*180/PI, index);
   index = index + 4;
   //4 Pitch_angle
   data2log(senddata, (Pitch_angle-Pitch_angle_offset)*180/PI, index);
@@ -275,6 +294,13 @@ void make_telemetry_data(uint8_t* senddata)
   //24 Altitude2
   data2log(senddata, Altitude2, index);
   index = index + 4;
+  //25 Sense_Alt
+  data2log(senddata, Altitude, index);
+  index = index + 4;
+  //26 Dynamic accel Z
+  data2log(senddata, Az, index);
+  index = index + 4;
+
 }
 
 void data2log(uint8_t* data_list, float add_data, uint8_t index)
@@ -302,5 +328,3 @@ void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len)
     data[i]=newdata[i-index];
   }
 }
-
-#endif

@@ -62,6 +62,50 @@ const float Pitch_angle_ti = 4.0f;//4.0f
 const float Pitch_angle_td = 0.04f;//0.04f
 const float Pitch_angle_eta = 0.125f;//0.125f
 
+//Altitude control PID gain
+const float alt_kp = 0.1f;//2/10
+const float alt_ti = 5.0f;//100
+const float alt_td = 40.0f;
+const float alt_eta = 0.125f;
+const float alt_period = 0.0333;
+
+const float Thrust0_nominal = 0.63;
+const float z_dot_kp = 0.03f;//0.085
+const float z_dot_ti = 20.0f;//
+const float z_dot_td = 0.0145f;
+const float z_dot_eta = 0.125f;
+
+/*// Good
+const float alt_kp = 1.51f;//2/10 q=1.5
+const float alt_ti = 5.0f;//100
+const float alt_td = 10.0f;
+const float alt_eta = 0.125f;
+const float alt_period = 0.0333;
+
+const float Thrust0_nominal = 0.63;
+const float z_dot_kp = 0.018f;//0.085
+const float z_dot_ti = 25.0f;//
+const float z_dot_td = 0.0145f;
+const float z_dot_eta = 0.125f;
+
+//SoSo
+const float alt_kp = 5.0f;//2/10
+const float alt_ti = 50.0f;//100
+const float alt_td = 0.5f;
+const float alt_eta = 0.125f;
+const float alt_period = 0.0333;
+
+const float Thrust0_nominal = 0.63;
+const float z_dot_kp = 0.02f;//0.085
+const float z_dot_ti = 20.0f;//
+const float z_dot_td = 0.01f;
+const float z_dot_eta = 0.125f;
+
+*/
+
+
+
+
 //Times
 volatile float Elapsed_time=0.0f;
 volatile float Old_Elapsed_time=0.0f;
@@ -91,7 +135,7 @@ volatile float Roll_angle_reference=0.0f, Pitch_angle_reference=0.0f, Yaw_angle_
 //Commanad
 //スロットル指令値
 //Throttle
-volatile float Thrust_command=0.0f;
+volatile float Thrust_command=0.0f, Thrust_command2 = 0.0f;
 //角速度指令値
 //Rate command
 volatile float Roll_rate_command=0.0f, Pitch_rate_command=0.0f, Yaw_rate_command=0.0f;
@@ -141,33 +185,6 @@ Filter Duty_fr;
 Filter Duty_fl;
 Filter Duty_rr;
 Filter Duty_rl;
-
-//CRGB led_esp[NUM_LEDS];
-//CRGB led_onboard[2];
-
-//Altitude control PID gain
-const float alt_kp = 2.0f;//2/10
-const float alt_ti = 100000.0f;//100
-const float alt_td = 0.0f;
-const float alt_eta = 0.125f;
-const float alt_period = 0.0333;
-
-//Altitude Control variables
-//1:kp=0.01 ti = 50 td=0.5 q =1.5 soso
-//2:kp=0.01 ti = 100 td=1 q =3 x 最後に下がる
-//2:kp=0.01 ti = 80 td=1 q =3 x 間欠上昇
-//2:kp=0.01 ti = 85 td=1 q =3 x 最後下がる
-//2:kp=0.01 ti = 95 td=1 q =3 x 最後下がる
-//2:kp=0.01 ti = 81 td=1 q =3 soso 上がるがだいぶキープ
-//2:kp=0.01 ti = 83 td=5 q =3 soso 下がる
-//2:kp=0.02 ti = 83 td=7 q =5 soso 下がる
-
-const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.15f;//0.085
-const float z_dot_ti = 7.0f;//
-const float z_dot_td = 0.01f;
-const float z_dot_eta = 0.125f;
-
 
 volatile float Thrust0=0.0;
 uint8_t Alt_flag = 0;
@@ -460,18 +477,19 @@ float altitude_control(uint8_t reset_flag)
   }
   else if(Alt_control_ok == 1)
   {
-    Alt_control_ok = 0;
-    float alt_err = Alt_ref - Altitude2;
-    Z_dot_ref = alt_pid.update(alt_err, Control_period);
-    float z_dot_err = Z_dot_ref - Alt_velocity;
-    u = z_dot_pid.update(z_dot_err, Control_period);
+    //Alt_control_ok = 0;
+    //float alt_err = Alt_ref - Altitude2;
+    //Z_dot_ref = alt_pid.update(alt_err, Control_period);
+    //float z_dot_err = Z_dot_ref - Alt_velocity;
+    //u = z_dot_pid.update(z_dot_err, Control_period);
   }
   return u;
 }
 
+uint8_t Throttle_control_mode = 0;
+
 void get_command(void)
 {
-  uint8_t Throttle_control_mode = 0;
   Control_mode = Stick[CONTROLMODE];
 
   //if(OverG_flag == 1){
@@ -486,23 +504,24 @@ void get_command(void)
   if (Throttle_control_mode == 0)
   {
     //Manual
-    if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;
+    if(thlo<0.0)thlo = 0.0;
+    if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;//不感帯
     if (thlo>1.0f) thlo = 1.0f;
     if (thlo<-1.0f) thlo =0.0f;
     //Throttle curve conversion　スロットルカーブ補正
     //Thrust_command = (2.95f*thlo-4.8f*thlo*thlo+2.69f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
     float th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
     Thrust_command = Thrust_filtered.update(th, Control_period);
-
   }
   else if (Throttle_control_mode == 1)
   {
     //Altitude Control
-    Alt_ref = Alt_max;
+    //Alt_ref = Alt_max;
 
     if(Alt_flag==0)
     {
-      //Manual
+      //Manual目標高度まではマニュアルで上げる
+      if(thlo<0.0)thlo = 0.0;
       if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;
       if (thlo>1.0f) thlo = 1.0f;
       if (thlo<-1.0f) thlo =0.0f;
@@ -518,31 +537,26 @@ void get_command(void)
       }
       else Alt_flag = 1; 
     }
-    else Thrust_command = (Thrust0 + altitude_control(0))*BATTERY_VOLTAGE;
+    else
+    {
+      Alt_ref = Alt_ref + thlo*0.0001;
+    } 
   }
 
   //Thrust_command = thlo*BATTERY_VOLTAGE;
 
-  #ifdef MINIJOYC
-  Roll_angle_command = 0.6*Stick[AILERON];
-  if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
-  if (Roll_angle_command> 1.0f)Roll_angle_command =  1.0f;  
-  Pitch_angle_command = 0.6*Stick[ELEVATOR];
-  if (Pitch_angle_command<-1.0f)Pitch_angle_command = -1.0f;
-  if (Pitch_angle_command> 1.0f)Pitch_angle_command =  1.0f;  
-  #else
   Roll_angle_command = 0.4*Stick[AILERON];
   if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
   if (Roll_angle_command> 1.0f)Roll_angle_command =  1.0f;  
   Pitch_angle_command = 0.4*Stick[ELEVATOR];
   if (Pitch_angle_command<-1.0f)Pitch_angle_command = -1.0f;
   if (Pitch_angle_command> 1.0f)Pitch_angle_command =  1.0f;  
-  #endif
+
   Yaw_angle_command = Stick[RUDDER];
   if (Yaw_angle_command<-1.0f)Yaw_angle_command = -1.0f;
   if (Yaw_angle_command> 1.0f)Yaw_angle_command =  1.0f;  
   //Yaw control
-  Yaw_rate_reference   = 1.5f * PI * (Yaw_angle_command - Rudder_center);
+  Yaw_rate_reference   = 2.0f * PI * (Yaw_angle_command - Rudder_center);
 
   if (Control_mode == RATECONTROL)
   {
@@ -565,7 +579,7 @@ void rate_control(void)
 {
   float p_rate, q_rate, r_rate;
   float p_ref, q_ref, r_ref;
-  float p_err, q_err, r_err;
+  float p_err, q_err, r_err, z_dot_err;
 
   //Control main
   if(rc_isconnected())
@@ -580,6 +594,9 @@ void rate_control(void)
       p_pid.reset();
       q_pid.reset();
       r_pid.reset();
+      alt_pid.reset();
+      z_dot_pid.reset();
+
       altitude_control(1);
       Roll_rate_reference = 0.0f;
       Pitch_rate_reference = 0.0f;
@@ -603,11 +620,17 @@ void rate_control(void)
       p_err = p_ref - p_rate;
       q_err = q_ref - q_rate;
       r_err = r_ref - r_rate;
-
+      z_dot_err = Z_dot_ref - Alt_velocity;
+      
       //Rate Control PID
-      Roll_rate_command = p_pid.update(p_err, Control_period);
-      Pitch_rate_command = q_pid.update(q_err, Control_period);
-      Yaw_rate_command = r_pid.update(r_err, Control_period);
+      Roll_rate_command = p_pid.update(p_err, Interval_time);
+      Pitch_rate_command = q_pid.update(q_err, Interval_time);
+      Yaw_rate_command = r_pid.update(r_err, Interval_time);
+      if (Alt_flag == 1)
+      {
+        Thrust_command = (Thrust0 + z_dot_pid.update(z_dot_err, Interval_time))*BATTERY_VOLTAGE;
+        //USBSerial.printf("Thrust0=%f\n\r", Thrust0);
+      }
 
       //Motor Control
       //正規化Duty
@@ -664,7 +687,7 @@ void rate_control(void)
 
 void angle_control(void)
 {
-  float phi_err,theta_err;
+  float phi_err, theta_err, alt_err;
   static uint8_t cnt=0;
   static float timeval=0.0f;
   //flip
@@ -684,6 +707,7 @@ void angle_control(void)
     Pitch_rate_reference=0.0f;
     phi_err = 0.0f;
     theta_err = 0.0f;
+    alt_err = 0.0f;
     phi_pid.reset();
     theta_pid.reset();
     phi_pid.set_error(Roll_angle_reference);
@@ -784,10 +808,14 @@ void angle_control(void)
       //Error
       phi_err   = Roll_angle_reference   - (Roll_angle - Roll_angle_offset );
       theta_err = Pitch_angle_reference - (Pitch_angle - Pitch_angle_offset);
-    
+      alt_err = Alt_ref - Altitude2;
+      //Z_dot_ref = alt_pid.update(alt_err, Interval_time);
+
       //PID
-      Roll_rate_reference = phi_pid.update(phi_err, Control_period);
-      Pitch_rate_reference = theta_pid.update(theta_err, Control_period);
+      Roll_rate_reference = phi_pid.update(phi_err, Interval_time);
+      Pitch_rate_reference = theta_pid.update(theta_err, Interval_time);
+      if(Alt_flag==1)Z_dot_ref = alt_pid.update(alt_err, Interval_time);
+
     } 
   }
 }

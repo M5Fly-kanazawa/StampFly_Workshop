@@ -28,6 +28,15 @@ INA3221 ina3221(INA3221_ADDR40_GND);// Set I2C address to 0x40 (A0 pin -> GND)
 Filter acc_filter;
 Filter az_filter;
 Filter voltage_filter;
+Filter raw_ax_filter;
+Filter raw_ay_filter;
+Filter raw_az_filter;
+Filter raw_gx_filter;
+Filter raw_gy_filter;
+Filter raw_gz_filter;
+Filter alt_filter;
+
+
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -205,7 +214,15 @@ void sensor_init()
 
   //Acceleration filter
   //acc_filter.set_parameter(0.005, 0.0025);
-  az_filter.set_parameter(0.15, 0.0025);
+  az_filter.set_parameter(0.01, 0.0025);//Tau=0.25
+  raw_ax_filter.set_parameter(0.02, 0.0025);
+  raw_ay_filter.set_parameter(0.02, 0.0025);
+  raw_az_filter.set_parameter(0.02, 0.0025);
+  raw_gx_filter.set_parameter(0.005, 0.0025);
+  raw_gy_filter.set_parameter(0.005, 0.0025);
+  raw_gz_filter.set_parameter(0.005, 0.0025);
+  alt_filter.set_parameter(0.01, 0.0025);
+
   //while(1);
 }
 
@@ -216,16 +233,18 @@ float sensor_read(void)
   float filterd_v;
   static float dp, dq, dr; 
   static uint16_t dcnt=0u;
-  uint16_t dist;
+  static uint16_t dist=0;
+  int16_t deff;
+  static uint16_t old_dist[4] = {0};
   static float alt_time = 0.0f;
   static float sensor_time = 0.0f;
   static float old_alt_time = 0.0f;
   static uint8_t first_flag = 0;
   const uint8_t interval = 400/30+1;
-  float old_alt=0.0;
   float old_sensor_time = 0.0;
   uint32_t st;
   float sens_interval;
+  float h;
 
   st = micros();
   old_sensor_time = sensor_time;
@@ -245,13 +264,13 @@ float sensor_read(void)
   imu_update();//IMUの値を読む前に必ず実行
 
   //Get Acc Data
-  acc_x = imu_get_acc_x();
-  acc_y = imu_get_acc_y();
-  acc_z = imu_get_acc_z();
+  acc_x = raw_ax_filter.update(imu_get_acc_x(), Interval_time);
+  acc_y = raw_ay_filter.update(imu_get_acc_y(), Interval_time);
+  acc_z = raw_az_filter.update(imu_get_acc_z(), Interval_time);
   //Get Gyro Data
-  gyro_x = imu_get_gyro_x();
-  gyro_y = imu_get_gyro_y();
-  gyro_z = imu_get_gyro_z();
+  gyro_x = raw_gx_filter.update(imu_get_gyro_x(), Interval_time);
+  gyro_y = raw_gy_filter.update(imu_get_gyro_y(), Interval_time);
+  gyro_z = raw_gz_filter.update(imu_get_gyro_z(), Interval_time);
 
   Accel_x_raw =  acc_y;
   Accel_y_raw =  acc_x;
@@ -299,43 +318,65 @@ float sensor_read(void)
 
   //Altitude
   if(Mode>AVERAGE_MODE)
-  Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
+  {
+    if(Alt_flag == 1)Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
+    else Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
+  }
   //USBSerial.printf("Sens_interval=%f,Az=%f, rawdata=%f\n\r", sens_interval, Az, -(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
 
-  #if 1
   //Get Altitude (30Hz)
+  if(Alt_flag == 0)EstimatedAltitude.set_vel(0.0);
   if (dcnt>interval)
   {
     if(ToF_bottom_data_ready_flag)
     {
-      ToF_bottom_data_ready_flag = 0;
-      dist=tof_bottom_get_range();
-      old_alt = Altitude;
-      Altitude = (float)dist/1000.0;
-
-      //外れ値除去
-      if(dist==9999)Altitude = old_alt;
-      else if(dist==8191)Altitude = old_alt;
-      else if(dist==0)Altitude = old_alt;
-      //else if (Altitude - old_alt >  0.1)Altitude = old_alt;
-      //else if (Altitude - old_alt < -0.1)Altitude = old_alt;
-      
-      Alt_control_ok = 1;
       dcnt=0u;
-
       old_alt_time = alt_time;
       alt_time = micros()*1.0e-6;
-      float h = alt_time - old_alt_time;
-      if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, h);
-      else first_flag = 1;
-      Altitude2 = EstimatedAltitude.Altitude;
-      Alt_velocity = EstimatedAltitude.Velocity;
-      //USBSerial.printf("%9.6f, %9.6f\r\n",Elapsed_time, -(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+      h = alt_time - old_alt_time;
+      ToF_bottom_data_ready_flag = 0;
+
+      //距離の値の更新
+      //old_dist[0] = dist;
+      dist=tof_bottom_get_range();
+      
+      
+      //外れ値処理
+      deff = dist - old_dist[1];
+      if ( deff > 500 )
+      {
+        dist = old_dist[1] + (old_dist[1] - old_dist[2])/2;
+      }
+      else if ( deff < -500 )
+      {
+        dist = old_dist[1] + (old_dist[1] - old_dist[3])/2;
+      }
+      else
+      {
+        old_dist[3] = old_dist[2];
+        old_dist[2] = old_dist[1];
+        old_dist[1] = dist;
+      }
+      
+      //if(dist==9999)dist = old_dist;
+      //else if(dist==8191)dist = old_dist;
+      //else if(dist==0)dist = old_dist;
+      //else if (Altitude - old_alt >  0.1)Altitude = old_alt;
+      //else if (Altitude - old_alt < -0.1)Altitude = old_alt;      
       //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
     }
   }
   else dcnt++;
-  #endif
+
+  Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
+  //USBSerial.printf("dist=%f Altitude=%f\n\r",(float)dist/1000.0, Altitude);
+
+  //Alt_control_ok = 1;
+  if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
+  else first_flag = 1;
+  Altitude2 = EstimatedAltitude.Altitude;
+  Alt_velocity = EstimatedAltitude.Velocity;
+
 
   //float Roll_angle = Roll_angle;
   //float tht = Pitch_angle;

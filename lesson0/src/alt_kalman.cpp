@@ -49,6 +49,10 @@ void Alt_kalman::update(float z_sens, float accel, float h)
         //printf("%11.4f %11.4f %11.4f %11.4f\n", p11, p12, p21, p22);
 }
 
+void Alt_kalman::set_vel(float v)
+{
+  velocity = v;
+}
 
 
 

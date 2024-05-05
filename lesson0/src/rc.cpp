@@ -126,7 +126,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len)
   //Stick[THROTTLE] /= THROTTLE_MAX_JOYC;
   //Stick[AILERON] /= (0.5*3.14159);
   //Stick[ELEVATOR] /= (0.5*3.14159);
-  if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
+  //if(Stick[THROTTLE]<0.0) Stick[THROTTLE]=0.0;
 #endif
   
 #if 0
@@ -247,7 +247,7 @@ uint8_t telemetry_send(uint8_t* data, uint16_t datalen)
     //state = 1;
   }
   //一度送信エラーを検知してもしばらくしたら復帰する
-  if (cnt>100)
+  if (cnt>500)
   {
     error_flag = 0;
     cnt = 0;

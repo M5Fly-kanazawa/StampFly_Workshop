@@ -7,7 +7,7 @@
 
 uint8_t Telem_mode = 0;
 uint8_t Telem_cnt = 0;
-const uint8_t MAXINDEX=106;
+const uint8_t MAXINDEX=110;
 
 void telemetry_sequence(void);
 void make_telemetry_header_data(uint8_t* senddata);
@@ -295,12 +295,10 @@ void make_telemetry_data(uint8_t* senddata)
   index = index + 4;
   //25 Sense_Alt
   data_set(senddata, Altitude, &index);
-  //data2log(senddata, Altitude, index);
-  //index = index + 4;
-  //26 Dynamic accel Z
+  //26 Az
   data_set(senddata, Az, &index);
-  //data2log(senddata, Az, index);
-  //index = index + 4;
+  //27 Az_bias
+  data_set(senddata, Az_bias, &index);
 
 }
 

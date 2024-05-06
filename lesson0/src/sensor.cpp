@@ -52,6 +52,8 @@ volatile float Altitude2 = 0.0f;
 volatile float Alt_velocity = 0.0f;
 volatile uint8_t Alt_control_ok = 0;
 volatile float Az=0.0;
+volatile float Az_bias=0.0;
+
 volatile uint16_t Offset_counter = 0;
 
 volatile float Voltage;
@@ -319,78 +321,81 @@ float sensor_read(void)
   //Altitude
   if(Mode>AVERAGE_MODE)
   {
-    if(Alt_flag == 1)Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
-    else Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
-  }
-  //USBSerial.printf("Sens_interval=%f,Az=%f, rawdata=%f\n\r", sens_interval, Az, -(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+    //if(Alt_flag == 1)Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
+    //else Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
+    Az = az_filter.update(-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset), sens_interval);
 
-  //Get Altitude (30Hz)
-  if(Alt_flag == 0)EstimatedAltitude.set_vel(0.0);
-  if (dcnt>interval)
-  {
-    if(ToF_bottom_data_ready_flag)
+
+    //Get Altitude (30Hz)
+    //if(Alt_flag == 0)EstimatedAltitude.set_vel(0.0);
+    if (dcnt>interval)
     {
-      dcnt=0u;
-      old_alt_time = alt_time;
-      alt_time = micros()*1.0e-6;
-      h = alt_time - old_alt_time;
-      ToF_bottom_data_ready_flag = 0;
+      if(ToF_bottom_data_ready_flag)
+      {
+        dcnt=0u;
+        old_alt_time = alt_time;
+        alt_time = micros()*1.0e-6;
+        h = alt_time - old_alt_time;
+        ToF_bottom_data_ready_flag = 0;
 
-      //距離の値の更新
-      //old_dist[0] = dist;
-      dist=tof_bottom_get_range();
-      
-      
-      //外れ値処理
-      deff = dist - old_dist[1];
-      if ( deff > 500 )
-      {
-        dist = old_dist[1] + (old_dist[1] - old_dist[2])/2;
+        //距離の値の更新
+        //old_dist[0] = dist;
+        dist=tof_bottom_get_range();
+        
+        
+        //外れ値処理
+        deff = dist - old_dist[1];
+        if ( deff > 500 )
+        {
+          dist = old_dist[1] + (old_dist[1] - old_dist[2])/2;
+        }
+        else if ( deff < -500 )
+        {
+          dist = old_dist[1] + (old_dist[1] - old_dist[3])/2;
+        }
+        else
+        {
+          old_dist[3] = old_dist[2];
+          old_dist[2] = old_dist[1];
+          old_dist[1] = dist;
+        }
+        
+        //if(dist==9999)dist = old_dist;
+        //else if(dist==8191)dist = old_dist;
+        //else if(dist==0)dist = old_dist;
+        //else if (Altitude - old_alt >  0.1)Altitude = old_alt;
+        //else if (Altitude - old_alt < -0.1)Altitude = old_alt;      
+        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
-      else if ( deff < -500 )
-      {
-        dist = old_dist[1] + (old_dist[1] - old_dist[3])/2;
-      }
-      else
-      {
-        old_dist[3] = old_dist[2];
-        old_dist[2] = old_dist[1];
-        old_dist[1] = dist;
-      }
-      
-      //if(dist==9999)dist = old_dist;
-      //else if(dist==8191)dist = old_dist;
-      //else if(dist==0)dist = old_dist;
-      //else if (Altitude - old_alt >  0.1)Altitude = old_alt;
-      //else if (Altitude - old_alt < -0.1)Altitude = old_alt;      
-      //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
     }
+    else dcnt++;
+
+    Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
+
+    //Alt_control_ok = 1;
+    if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
+    else first_flag = 1;
+    Altitude2 = EstimatedAltitude.Altitude;
+    Alt_velocity = EstimatedAltitude.Velocity;
+    Az_bias = EstimatedAltitude.Bias;
+    //USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity, Az_bias);
+
+
+
+    //float Roll_angle = Roll_angle;
+    //float tht = Pitch_angle;
+    //float Yaw_angle = Yaw_angle;
+    //float sRoll_angle = sin(Roll_angle);
+    //float cRoll = cos(Roll_angle);
+  // float stht = sin(tht);
+    //float cPitch = cos(Pitch_angle);
+    //float sYaw_angle = sin(Yaw_angle);
+    //float sYaw_angle = cos(Yaw_angle);
+
+    //float r33 =  cRoll*cPitch;
+    //Altitude2 = r33 * Altitude;
+    //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
   }
-  else dcnt++;
-
-  Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
-  //USBSerial.printf("dist=%f Altitude=%f\n\r",(float)dist/1000.0, Altitude);
-
-  //Alt_control_ok = 1;
-  if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
-  else first_flag = 1;
-  Altitude2 = EstimatedAltitude.Altitude;
-  Alt_velocity = EstimatedAltitude.Velocity;
-
-
-  //float Roll_angle = Roll_angle;
-  //float tht = Pitch_angle;
-  //float Yaw_angle = Yaw_angle;
-  //float sRoll_angle = sin(Roll_angle);
-  //float cRoll = cos(Roll_angle);
- // float stht = sin(tht);
-  //float cPitch = cos(Pitch_angle);
-  //float sYaw_angle = sin(Yaw_angle);
-  //float sYaw_angle = cos(Yaw_angle);
-
-  //float r33 =  cRoll*cPitch;
-  //Altitude2 = r33 * Altitude;
-  //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
 
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);

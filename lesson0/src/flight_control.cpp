@@ -63,16 +63,16 @@ const float Pitch_angle_td = 0.04f;//0.04f
 const float Pitch_angle_eta = 0.125f;//0.125f
 
 //Altitude control PID gain
-const float alt_kp = 0.1f;//2/10
-const float alt_ti = 5.0f;//100
+const float alt_kp = 0.2f;//2/10
+const float alt_ti = 10.0f;//100
 const float alt_td = 40.0f;
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.03f;//0.085
-const float z_dot_ti = 20.0f;//
-const float z_dot_td = 0.0145f;
+const float z_dot_kp = 0.15f;//0.085
+const float z_dot_ti = 5.0f;//
+const float z_dot_td = 0.02f;
 const float z_dot_eta = 0.125f;
 
 /*// Good
@@ -486,7 +486,7 @@ float altitude_control(uint8_t reset_flag)
   return u;
 }
 
-uint8_t Throttle_control_mode = 0;
+uint8_t Throttle_control_mode = 1;
 
 void get_command(void)
 {

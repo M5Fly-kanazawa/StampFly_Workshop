@@ -216,7 +216,7 @@ void sensor_init()
 
   //Acceleration filter
   //acc_filter.set_parameter(0.005, 0.0025);
-  az_filter.set_parameter(0.01, 0.0025);//Tau=0.25
+  az_filter.set_parameter(0.05, 0.0025);//Tau=0.01
   raw_ax_filter.set_parameter(0.02, 0.0025);
   raw_ay_filter.set_parameter(0.02, 0.0025);
   raw_az_filter.set_parameter(0.02, 0.0025);
@@ -300,7 +300,7 @@ float sensor_read(void)
   #if 1
   acc_norm = sqrt(Accel_x_raw*Accel_x_raw + Accel_y_raw*Accel_y_raw + Accel_z_raw*Accel_z_raw);
   Acc_norm = acc_filter.update(acc_norm ,Control_period);
-  if (Acc_norm>3.8) 
+  if (Acc_norm>4.2) 
   {
     OverG_flag = 1;
     if (Over_g == 0.0)Over_g = acc_norm;
@@ -341,8 +341,7 @@ float sensor_read(void)
         //距離の値の更新
         //old_dist[0] = dist;
         dist=tof_bottom_get_range();
-        
-        
+                
         //外れ値処理
         deff = dist - old_dist[1];
         if ( deff > 500 )
@@ -359,12 +358,6 @@ float sensor_read(void)
           old_dist[2] = old_dist[1];
           old_dist[1] = dist;
         }
-        
-        //if(dist==9999)dist = old_dist;
-        //else if(dist==8191)dist = old_dist;
-        //else if(dist==0)dist = old_dist;
-        //else if (Altitude - old_alt >  0.1)Altitude = old_alt;
-        //else if (Altitude - old_alt < -0.1)Altitude = old_alt;      
         //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
     }

@@ -43,7 +43,7 @@ void led_drive(void)
     }
     else Led_color = 0xDC669B;
 
-    if(Alt_flag == 1) Led_color = 0x555555;
+    if(Alt_flag == 1) Led_color = 0x331155;
     if(Rc_err_flag == 1) Led_color = 0xff0000;
 
     if (Under_voltage_flag < UNDER_VOLTAGE_COUNT) {onboard_led1(Led_color, 1);onboard_led2(Led_color, 1);}

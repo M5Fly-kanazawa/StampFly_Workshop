@@ -65,7 +65,21 @@ const float Pitch_angle_eta = 0.125f;//0.125f
 //Altitude control PID gain
 const float alt_kp = 0.2f;//2/10
 const float alt_ti = 10.0f;//100
-const float alt_td = 40.0f;
+const float alt_td = 0.4f;
+const float alt_eta = 0.125f;
+const float alt_period = 0.0333;
+
+const float Thrust0_nominal = 0.63;
+const float z_dot_kp = 0.15f;//0.085
+const float z_dot_ti = 2.0f;//
+const float z_dot_td = 0.045f;
+const float z_dot_eta = 0.125f;
+
+/*
+//SoSo
+const float alt_kp = 0.2f;//2/10
+const float alt_ti = 1.0f;//100
+const float alt_td = 1.0f;
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
@@ -75,36 +89,7 @@ const float z_dot_ti = 5.0f;//
 const float z_dot_td = 0.02f;
 const float z_dot_eta = 0.125f;
 
-/*// Good
-const float alt_kp = 1.51f;//2/10 q=1.5
-const float alt_ti = 5.0f;//100
-const float alt_td = 10.0f;
-const float alt_eta = 0.125f;
-const float alt_period = 0.0333;
-
-const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.018f;//0.085
-const float z_dot_ti = 25.0f;//
-const float z_dot_td = 0.0145f;
-const float z_dot_eta = 0.125f;
-
-//SoSo
-const float alt_kp = 5.0f;//2/10
-const float alt_ti = 50.0f;//100
-const float alt_td = 0.5f;
-const float alt_eta = 0.125f;
-const float alt_period = 0.0333;
-
-const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.02f;//0.085
-const float z_dot_ti = 20.0f;//
-const float z_dot_td = 0.01f;
-const float z_dot_eta = 0.125f;
-
 */
-
-
-
 
 //Times
 volatile float Elapsed_time=0.0f;
@@ -159,6 +144,7 @@ uint8_t BtnA_on_flag = 0;
 uint8_t BtnA_off_flag =1;
 volatile uint8_t Loop_flag = 0;
 volatile uint8_t Angle_control_flag = 0;
+uint8_t Stick_return_flag = 0;
 //uint32_t Led_color = 0x000000;
 //uint32_t Led_color2 = 255;
 
@@ -194,6 +180,7 @@ float Alt_max = 0.5;
 float Z_dot_ref = 0.0f;
 
 //高度目標
+const float Alt_ref_min = 0.1;
 volatile float Alt_ref = 0.5;
 
 //Function declaration
@@ -359,7 +346,8 @@ void loop_400Hz(void)
     Angle_control_flag = 0;
     Thrust0 = 0.0;
     Alt_flag = 0;
-    Alt_ref = 0.5f;
+    Alt_ref = Alt_ref_min;
+    Stick_return_flag = 0;
     #endif
 
   }
@@ -492,6 +480,8 @@ void get_command(void)
 {
   Control_mode = Stick[CONTROLMODE];
 
+  static uint16_t stick_count;
+
   //if(OverG_flag == 1){
   //  Thrust_command = 0.0;
   //}
@@ -520,6 +510,7 @@ void get_command(void)
 
     if(Alt_flag==0)
     {
+      stick_count = 0;
       //Manual目標高度まではマニュアルで上げる
       if(thlo<0.0)thlo = 0.0;
       if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;
@@ -539,7 +530,21 @@ void get_command(void)
     }
     else
     {
-      Alt_ref = Alt_ref + thlo*0.0001;
+      if(Stick_return_flag == 0)
+      {
+        if ( (-0.2 < thlo) && (thlo < 0.2) )
+        {
+          thlo = 0.0f ;//不感帯
+          stick_count++;
+          if(stick_count>800)Stick_return_flag = 1;
+        }
+      }
+      else
+      {
+        if ( (-0.2 < thlo) && (thlo < 0.2) )thlo = 0.0f ;//不感帯
+        Alt_ref = Alt_ref + thlo*0.001;
+        if(Alt_ref<0.05)Alt_ref=0.05;
+      }
     } 
   }
 

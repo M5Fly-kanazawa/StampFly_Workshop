@@ -4,6 +4,7 @@
 #include "pid.hpp"
 #include "sensor.hpp"
 #include "led.hpp"
+#include "telemetry.hpp"
 
 //#define DEBUG
 //#define TEST
@@ -200,13 +201,13 @@ uint8_t judge_mode_change(void);
 uint8_t get_arming_button(void);
 uint8_t get_flip_button(void);
 
-void float2byte(float x, uint8_t* dst);
-void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len);
-void data2log(uint8_t* data_list, float add_data, uint8_t index);
-void telemetry(void);
-void telemetry_sequence(void);
-void make_telemetry_data(uint8_t* senddata);
-void make_telemetry_header_data(uint8_t* senddata);
+//void float2byte(float x, uint8_t* dst);
+//void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len);
+//void data2log(uint8_t* data_list, float add_data, uint8_t index);
+//void telemetry(void);
+//void telemetry_sequence(void);
+//void make_telemetry_data(uint8_t* senddata);
+//void make_telemetry_header_data(uint8_t* senddata);
 
 //割り込み関数
 //Intrupt function
@@ -353,7 +354,7 @@ void loop_400Hz(void)
   }
 
   //Telemetry
-  telemetry();
+  telemetry400();
 
   uint32_t ce_time = micros();
   //if(Telem_cnt == 1)Dt_time = D_time - E_time;

@@ -77,54 +77,32 @@ void make_telemetry_header_data(uint8_t* senddata)
   senddata[0]=99;
   senddata[1]=99;
   index=2;
-  //Roll_rate_kp
   data_set(senddata, Roll_rate_kp, &index);
-  //Roll_rate_ti
   data_set(senddata, Roll_rate_ti, &index);
-  //Roll_rate_td
   data_set(senddata, Roll_rate_td, &index);
-  //Roll_rate_eta
   data_set(senddata, Roll_rate_eta, &index);
-  //Pitch_rate_kp
   data_set(senddata, Pitch_rate_kp, &index);
-  //Pitch_rate_ti
   data_set(senddata, Pitch_rate_ti, &index);
-  //Pitch_rate_td
   data_set(senddata, Pitch_rate_td, &index);
-  //Pitch_rate_eta
   data_set(senddata, Pitch_rate_eta, &index);
-  //Yaw_rate_kp
   data_set(senddata, Yaw_rate_kp, &index);
-  //Yaw_rate_ti
   data_set(senddata, Yaw_rate_ti, &index);
-  //Yaw_rate_td
   data_set(senddata, Yaw_rate_td, &index);
-  //Yaw_rate_eta
   data_set(senddata, Yaw_rate_eta, &index);
-  //Rall_angle_kp
   data_set(senddata, Rall_angle_kp, &index);
-  //Rall_angle_ti
   data_set(senddata, Rall_angle_ti, &index);
-  //Rall_angle_td
   data_set(senddata, Rall_angle_td, &index);
-  //Rall_angle_eta
   data_set(senddata, Rall_angle_eta, &index);
-  //Pitch_angle_kp
   data_set(senddata, Pitch_angle_kp, &index);
-  //Pitch_angle_ti
   data_set(senddata, Pitch_angle_ti, &index);
-  //Pitch_angle_td
   data_set(senddata, Pitch_angle_td, &index);
-  //Pitch_angle_eta
   data_set(senddata, Pitch_angle_eta, &index);
 }
 
 void make_telemetry_data(uint8_t* senddata)
 {
-  //const uint8_t MAXINDEX=102;
   float d_float;
   uint8_t d_int[4];
-  //uint8_t senddata[MAXINDEX]; 
   uint8_t index=0;  
 
   //Telemetry Header

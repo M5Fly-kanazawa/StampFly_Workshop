@@ -4,5 +4,7 @@
 #include <stdint.h>
 
 void telemetry(void);
+void telemetry400(void);
+
 
 #endif

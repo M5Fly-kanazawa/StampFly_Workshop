@@ -11,7 +11,7 @@ void imu_init(void)
 {
   USBSerial.printf("Start IMU Initialize!\n\r");
   pinMode(46, OUTPUT);//CSを設定
-  digitalWrite(46, 0);//CSをHIGH
+  digitalWrite(46, 0);//CSをLOW
   bmi270_dev_init();
   USBSerial.printf("SPI Initilize status:%d\n\r",spi_init());
   usleep(1000*10);

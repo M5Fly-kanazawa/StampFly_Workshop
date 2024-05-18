@@ -84,6 +84,3 @@ void mat_times(Mat A, Mat B)
 {
 
 }
-
-
-

@@ -47,7 +47,7 @@ const float Pitch_rate_ti = 0.7f;//0.7f
 const float Pitch_rate_td = 0.025f;//0.025f
 const float Pitch_rate_eta = 0.125f;//0.125f
 
-const float Yaw_rate_kp = 3.0f;//3.0f
+const float Yaw_rate_kp = 3.0f;//3.0f->2.0
 const float Yaw_rate_ti = 0.8f;//0.8f
 const float Yaw_rate_td = 0.01f;//0.01f
 const float Yaw_rate_eta = 0.125f;//0.125f
@@ -64,30 +64,30 @@ const float Pitch_angle_td = 0.04f;//0.04f
 const float Pitch_angle_eta = 0.125f;//0.125f
 
 //Altitude control PID gain
-const float alt_kp = 0.2f;//2/10
-const float alt_ti = 10.0f;//100
+const float alt_kp = 0.65f;//2/10
+const float alt_ti = 200.0f;//100
+const float alt_td = 0.0f;//0.4->0.8->0.2
+const float alt_eta = 0.125f;
+const float alt_period = 0.0333;
+
+const float Thrust0_nominal = 0.63;
+const float z_dot_kp = 0.15f;//0.085
+const float z_dot_ti = 13.5f;//2.0->15->14
+const float z_dot_td = 0.005f;//0.001->0.01->0.005
+const float z_dot_eta = 0.125f;
+
+/*
+//SoSo
+const float alt_kp = 1.0f;//2/10
+const float alt_ti = 200.0f;//100
 const float alt_td = 0.4f;
 const float alt_eta = 0.125f;
 const float alt_period = 0.0333;
 
 const float Thrust0_nominal = 0.63;
 const float z_dot_kp = 0.15f;//0.085
-const float z_dot_ti = 2.0f;//
-const float z_dot_td = 0.045f;
-const float z_dot_eta = 0.125f;
-
-/*
-//SoSo
-const float alt_kp = 0.2f;//2/10
-const float alt_ti = 1.0f;//100
-const float alt_td = 1.0f;
-const float alt_eta = 0.125f;
-const float alt_period = 0.0333;
-
-const float Thrust0_nominal = 0.63;
-const float z_dot_kp = 0.15f;//0.085
-const float z_dot_ti = 5.0f;//
-const float z_dot_td = 0.02f;
+const float z_dot_ti = 13.0f;//2.0->15->14
+const float z_dot_td = 0.0f;
 const float z_dot_eta = 0.125f;
 
 */
@@ -181,7 +181,7 @@ float Alt_max = 0.5;
 float Z_dot_ref = 0.0f;
 
 //高度目標
-const float Alt_ref_min = 0.1;
+const float Alt_ref_min = 0.3;
 volatile float Alt_ref = 0.5;
 
 //Function declaration
@@ -349,12 +349,14 @@ void loop_400Hz(void)
     Alt_flag = 0;
     Alt_ref = Alt_ref_min;
     Stick_return_flag = 0;
+    Thrust_filtered.reset();
     #endif
 
   }
 
   //Telemetry
-  telemetry400();
+  //telemetry400();
+  telemetry();
 
   uint32_t ce_time = micros();
   //if(Telem_cnt == 1)Dt_time = D_time - E_time;
@@ -455,8 +457,10 @@ void control_init(void)
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 
+
 float altitude_control(uint8_t reset_flag)
 {
+  /*
   static float u =0.0f;
   if (reset_flag == 1)
   {
@@ -473,9 +477,10 @@ float altitude_control(uint8_t reset_flag)
     //u = z_dot_pid.update(z_dot_err, Control_period);
   }
   return u;
+  */
 }
 
-uint8_t Throttle_control_mode = 1;
+uint8_t Throttle_control_mode = 0;
 
 void get_command(void)
 {
@@ -502,7 +507,7 @@ void get_command(void)
     //Throttle curve conversion　スロットルカーブ補正
     //Thrust_command = (2.95f*thlo-4.8f*thlo*thlo+2.69f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
     float th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
-    Thrust_command = Thrust_filtered.update(th, Control_period);
+    Thrust_command = Thrust_filtered.update(th, Interval_time);
   }
   else if (Throttle_control_mode == 1)
   {
@@ -517,15 +522,14 @@ void get_command(void)
       if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;
       if (thlo>1.0f) thlo = 1.0f;
       if (thlo<-1.0f) thlo =0.0f;
-      //Throttle curve conversion　スロットルカーブ補正
-      //Thrust_command = (2.95f*thlo-4.8f*thlo*thlo+2.69f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
       float th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
-      Thrust_command = Thrust_filtered.update(th, Control_period);
+      Thrust_command = Thrust_filtered.update(th, Interval_time);
       
       if (Altitude2 < Alt_ref) 
       {
         Thrust0 = Thrust_command / BATTERY_VOLTAGE;
-        altitude_control(1);
+        alt_pid.reset();
+        z_dot_pid.reset();
       }
       else Alt_flag = 1; 
     }
@@ -549,7 +553,7 @@ void get_command(void)
     } 
   }
 
-  //Thrust_command = thlo*BATTERY_VOLTAGE;
+  //Thrust_command = 0.45*BATTERY_VOLTAGE;
 
   Roll_angle_command = 0.4*Stick[AILERON];
   if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
@@ -602,8 +606,6 @@ void rate_control(void)
       r_pid.reset();
       alt_pid.reset();
       z_dot_pid.reset();
-
-      altitude_control(1);
       Roll_rate_reference = 0.0f;
       Pitch_rate_reference = 0.0f;
       Yaw_rate_reference = 0.0f;
@@ -640,17 +642,16 @@ void rate_control(void)
 
       //Motor Control
       //正規化Duty
-      FrontRight_motor_duty = Duty_fr.update((Thrust_command +(-Roll_rate_command +Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Control_period);
-      FrontLeft_motor_duty  = Duty_fl.update((Thrust_command +( Roll_rate_command +Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Control_period);
-      RearRight_motor_duty  = Duty_rr.update((Thrust_command +(-Roll_rate_command -Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Control_period);
-      RearLeft_motor_duty   = Duty_rl.update((Thrust_command +( Roll_rate_command -Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Control_period);
+      FrontRight_motor_duty = Duty_fr.update((Thrust_command +(-Roll_rate_command +Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
+      FrontLeft_motor_duty  = Duty_fl.update((Thrust_command +( Roll_rate_command +Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
+      RearRight_motor_duty  = Duty_rr.update((Thrust_command +(-Roll_rate_command -Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
+      RearLeft_motor_duty   = Duty_rl.update((Thrust_command +( Roll_rate_command -Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
 
-      //FrontRight_motor_duty = ((Thrust_command +(-Roll_rate_command +Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE);
-      //FrontLeft_motor_duty  = ((Thrust_command +( Roll_rate_command +Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE);
-      //RearRight_motor_duty  = ((Thrust_command +(-Roll_rate_command -Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE);
-      //RearLeft_motor_duty   = ((Thrust_command +( Roll_rate_command -Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE);
+      //FrontRight_motor_duty = Duty_fr.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
+      //FrontLeft_motor_duty  = Duty_fl.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
+      //RearRight_motor_duty  = Duty_rr.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
+      //RearLeft_motor_duty   = Duty_rl.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
     
-
       const float minimum_duty=0.0f;
       const float maximum_duty=0.95f;
 

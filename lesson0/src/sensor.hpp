@@ -52,7 +52,8 @@ typedef struct
 extern volatile float Roll_angle, Pitch_angle, Yaw_angle;
 extern volatile float Roll_rate, Pitch_rate, Yaw_rate;
 extern volatile float Accel_x_raw, Accel_y_raw, Accel_z_raw;
-extern volatile float Accel_z;
+extern volatile float Accel_x,Accel_y,Accel_z;
+extern volatile float Accel_z_d;
 extern volatile float Altitude;
 extern volatile float Altitude2;
 extern volatile float Alt_velocity;

@@ -21,8 +21,9 @@
  */
 
 
-#include <SPI.h>
+#include "spi_s3.hpp"
 #include "Bitcraze_PMW3901.h"
+#include <SPI.h>
 
 Bitcraze_PMW3901::Bitcraze_PMW3901(uint8_t cspin)
   : _cs(cspin)
@@ -30,11 +31,7 @@ Bitcraze_PMW3901::Bitcraze_PMW3901(uint8_t cspin)
 
 boolean Bitcraze_PMW3901::begin(void) {
   // Setup SPI port
-  SPI.begin(44, 43, 14);
   pinMode(_cs, OUTPUT);
-  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE3));
-
-  // Make sure the SPI bus is reset
   digitalWrite(_cs, HIGH);
   delay(1);
   digitalWrite(_cs, LOW);
@@ -42,7 +39,21 @@ boolean Bitcraze_PMW3901::begin(void) {
   digitalWrite(_cs, HIGH);
   delay(1);
 
+  //SPI.begin(44, 43, 14);
+
+
+  /*
+  SPI.begin(44, 43, 14);
+  SPI.beginTransaction(SPISettings(4 000 000, MSBFIRST, SPI_MODE3));
+  //Make sure the SPI bus is reset
+  digitalWrite(_cs, HIGH);
+  delay(1);
+  digitalWrite(_cs, LOW);
+  delay(1);
+  digitalWrite(_cs, HIGH);
+  delay(1);
   SPI.endTransaction();
+  */
 
   // Power on reset
   registerWrite(0x3A, 0x5A);
@@ -50,6 +61,9 @@ boolean Bitcraze_PMW3901::begin(void) {
   // Test the SPI communication, checking chipId and inverse chipId
   uint8_t chipId = registerRead(0x00);
   uint8_t dIpihc = registerRead(0x5F);
+
+  USBSerial.printf("PMW chipID(0x49):%02X\n\r", chipId);
+  USBSerial.printf("PMW chipINVID(0xB8):%02X\n\r", dIpihc);
 
   if (chipId != 0x49 && dIpihc != 0xB8) return false;
 
@@ -146,8 +160,10 @@ void Bitcraze_PMW3901::readFrameBuffer(char *FBuffer)
 
 // Low level register access
 void Bitcraze_PMW3901::registerWrite(uint8_t reg, uint8_t value) {
-  reg |= 0x80u;
+  //reg |= 0x80u;
+  spi_write(reg, &value, 1, &pmw);
 
+  /*
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE3));
 
   digitalWrite(_cs, LOW);
@@ -161,12 +177,17 @@ void Bitcraze_PMW3901::registerWrite(uint8_t reg, uint8_t value) {
 
   SPI.endTransaction();
 
-  delayMicroseconds(200);
+  
+  */
+ delayMicroseconds(200);
 }
 
 uint8_t Bitcraze_PMW3901::registerRead(uint8_t reg) {
-  reg &= ~0x80u;
+  uint8_t value;
+  //reg &= ~0x80u;
+  spi_read(reg, &value, 1, pmw);
 
+  /*
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE3));
 
   digitalWrite(_cs, LOW);
@@ -182,7 +203,8 @@ uint8_t Bitcraze_PMW3901::registerRead(uint8_t reg) {
   //delayMicroseconds(200);
 
   SPI.endTransaction();
-
+  */
+  delayMicroseconds(200);
   return value;
 }
 

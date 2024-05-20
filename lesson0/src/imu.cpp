@@ -10,16 +10,14 @@ struct bmi2_sens_data imu_data;
 void imu_init(void)
 {
   USBSerial.printf("Start IMU Initialize!\n\r");
-  pinMode(46, OUTPUT);//CSを設定
-  digitalWrite(46, 0);//CSをLOW
   bmi270_dev_init();
-  USBSerial.printf("SPI Initilize status:%d\n\r",spi_init());
   usleep(1000*10);
   uint8_t data=0;
 
   //BMI270 Init
   USBSerial.printf("#INIT Status:%d\n\r", bmi270_init(pBmi270));
-  USBSerial.printf("#Chip ID DEV:%02X\n\r", Bmi270.chip_id);
+  USBSerial.printf("#BMI270 Chip ID:%02X\n\r", Bmi270.chip_id);
+  if (Bmi270.chip_id!=BMI270_CHIP_ID)while(1);
   USBSerial.printf("#APP_STATUS:%02X\n\r", Bmi270.aps_status);
   
   USBSerial.printf("#INIT_STATUS Read:%d\n\r",bmi2_get_regs(0x21, &data, 1, pBmi270));  

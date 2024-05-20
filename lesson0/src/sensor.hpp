@@ -12,6 +12,9 @@
 #include <driver/spi_master.h>
 #include "driver/gpio.h"
 #include "sdkconfig.h"
+#include "imu.hpp"
+#include "tof.hpp"
+#include "opt.hpp"
 
 //#define SDA_PIN (46)
 //#define SCL_PIN (41)

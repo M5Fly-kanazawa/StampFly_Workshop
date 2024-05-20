@@ -11,7 +11,8 @@
         "memory": "cpp",
         "random": "cpp",
         "initializer_list": "cpp",
-        "wire.h": "c"
+        "wire.h": "c",
+        "sdkconfig.h": "c"
     },
     "cmake.sourceDirectory": "/Users/itoukouhei/Documents/PlatformIO/Projects/M5Fly/StampFly/.pio/libdeps/esp32-s3-devkitc-1/FastLED"
 }

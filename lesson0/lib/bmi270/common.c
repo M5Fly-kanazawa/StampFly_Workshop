@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "common.h"
+#include "../../src/spi_s3.hpp"
 //#include "bmi2_defs.h"
 
 //#include "driver/i2c.h"
@@ -41,8 +41,9 @@ struct bmi2_dev *pBmi270=&Bmi270;
 
 i2c_cmd_handle_t i2chandle;
 
+
 // SPIデバイスハンドラーを使って通信する
-spi_device_handle_t spidev;
+//spi_device_handle_t spidev;
 
 
 
@@ -146,7 +147,7 @@ BMI2_INTF_RETURN_TYPE bmi2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, 
     putI2cBus();
     return Status;
 }
-
+/************************************************************************
 //SPIバスの設定
 spi_bus_config_t buscfg = {
     .mosi_io_num = PIN_NUM_MOSI,
@@ -173,8 +174,9 @@ spi_device_interface_config_t devcfg = {
     .pre_cb = NULL,// transactionが始まる前に呼ばれる関数をセットできる
     .post_cb = NULL,// transactionが完了した後に呼ばれる関数をセットできる
 };
+***********************************************************************************/
 
-
+#if 0
 esp_err_t spi_init(void)
 {
     //Initialize the SPI bus
@@ -247,7 +249,8 @@ BMI2_INTF_RETURN_TYPE bmi2_spi_write(uint8_t reg_addr, const uint8_t *reg_data, 
 
     return ret;
 }
-
+/*******************************************************************************/
+#endif
 /*!
  * Delay function map to COINES platform
  */

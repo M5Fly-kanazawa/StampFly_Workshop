@@ -1,6 +1,4 @@
 #include "sensor.hpp"
-#include "imu.hpp"
-#include "tof.hpp" 
 #include "flight_control.hpp"
 #include "Bitcraze_PMW3901.h"
 
@@ -196,14 +194,21 @@ void sensor_init()
   }
 
   tof_init();
-  pinMode(12, OUTPUT);//CSを設定
-  digitalWrite(12, 1);//CSをHIGH (SPI　~CS CS is active LOW)
-  if (!flow.begin()) {
-    USBSerial.println("Initialization of the flow sensor failed");
-    while(1) { }
-  }
-  USBSerial.println("Initialization of the flow sensor Suceses!");
+  //SPI init
+  if(spi_init()==ESP_OK){USBSerial.printf("SPI INIT Success!\n\r");}
+  else {USBSerial.printf("SPI INIT Success!\n\r");while(1);}
+  
   imu_init();
+  opt_init(&optconfig);
+  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  if(optconfig.chipid!=0x49)while(1);
+
+  //if (!flow.begin()) {
+  //  USBSerial.println("Initialization of the flow sensor failed");
+  //  while(1) { }
+  //}
+  //USBSerial.println("Initialization of the flow sensor Suceses!");
+  
   Drone_ahrs.begin(400.0);
   ina3221.begin(&Wire1);
   ina3221.reset();  
@@ -255,14 +260,6 @@ void sensor_init()
   
   az_filter.set_parameter(0.1, 0.0025);//Tau=0.01
   alt_filter.set_parameter(0.01, 0.0025);
-  */
-
- /* 
-  if (!flow.begin()) {
-    USBSerial.println("Initialization of the flow sensor failed");
-    while(1) { }
-  }
-  USBSerial.println("Initialization of the flow sensor Suceses!");
   */
 
   uint16_t flowcnt=0;
@@ -441,14 +438,14 @@ float sensor_read(void)
     else Under_voltage_flag = 0;
     if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
   }
-  /*
-  if (opt_interval > 0.1)
+  
+  if (opt_interval > 0.01)
   {
     opt_interval = 0.0;
-    flow.readMotionCount(&deltaX, &deltaY);
-    USBSerial.printf("%f %d %d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
+    readMotionCount(&deltaX, &deltaY);
+    USBSerial.printf("%7.2f %5d %5d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
   }
-  */
+  
 
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);

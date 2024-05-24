@@ -1,6 +1,5 @@
 #include "sensor.hpp"
 #include "flight_control.hpp"
-#include "Bitcraze_PMW3901.h"
 
 /************ BEEP ************/
 //BeepPWM出力Pinのアサイン
@@ -19,7 +18,6 @@ const int beep_resolution = 12;
 const int beep_channel  = 7;
 /************ BEEP ************/
 
-
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
 
@@ -35,9 +33,6 @@ Filter raw_gx_filter;
 Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
-
-Bitcraze_PMW3901 flow(12);
-
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -267,7 +262,7 @@ void sensor_init()
   while(0)
   {
     // Get motion count since last call
-    flow.readMotionCount(&deltaX, &deltaY);
+    readMotionCount(&deltaX, &deltaY);
 
     USBSerial.print(flowcnt);
     USBSerial.print(" X: ");

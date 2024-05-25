@@ -20,6 +20,7 @@ const int beep_channel  = 7;
 
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
+Opt_kalman EstimatePosition;
 
 INA3221 ina3221(INA3221_ADDR40_GND);// Set I2C address to 0x40 (A0 pin -> GND)
 Filter acc_filter;
@@ -287,6 +288,7 @@ float sensor_read(void)
   int16_t deff;
   static uint16_t old_dist[4] = {0};
   static float alt_time = 0.0f;
+  static float pos_time = 0.0f;
   static float sensor_time = 0.0f;
   static float old_alt_time = 0.0f;
   static uint8_t first_flag = 0;
@@ -294,8 +296,11 @@ float sensor_read(void)
   float old_sensor_time = 0.0;
   uint32_t st;
   float sens_interval;
-  float h;
+  //float h;
+  float alt_sensing_time;
   static float opt_interval =0.0;
+  static float pos_interval =0.0;
+
 
   st = micros();
   old_sensor_time = sensor_time;
@@ -353,6 +358,8 @@ float sensor_read(void)
 
     //Get Altitude (30Hz)
     Az = az_filter.update(-Accel_z_d, sens_interval);
+    EstimatePosition.update();
+    
 
     if (dcnt>interval)
     {
@@ -361,7 +368,7 @@ float sensor_read(void)
         dcnt=0u;
         old_alt_time = alt_time;
         alt_time = micros()*1.0e-6;
-        h = alt_time - old_alt_time;
+        //h = alt_time - old_alt_time;
         ToF_bottom_data_ready_flag = 0;
 
         //距離の値の更新
@@ -384,12 +391,16 @@ float sensor_read(void)
           old_dist[2] = old_dist[1];
           old_dist[1] = dist;
         }
-        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",Elapsed_time,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+        alt_sensing_time = micros()*1.0e-6- alt_time;
+
+        USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
     }
     else dcnt++;
 
+    pos_time = micros()*1.0e-6;
     Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
+    pos_interval = micros()*1.0e-6 - pos_time;
 
     //Alt_control_ok = 1;
     if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
@@ -438,7 +449,7 @@ float sensor_read(void)
   {
     opt_interval = 0.0;
     readMotionCount(&deltaX, &deltaY);
-    USBSerial.printf("%7.2f %5d %5d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
+    //USBSerial.printf("%7.2f %5d %5d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
   }
   
 

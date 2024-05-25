@@ -15,6 +15,7 @@
 #include "imu.hpp"
 #include "tof.hpp"
 #include "opt.hpp"
+#include "opt_kalman.hpp"
 
 //#define SDA_PIN (46)
 //#define SCL_PIN (41)

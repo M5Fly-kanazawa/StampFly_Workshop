@@ -45,7 +45,7 @@ spi_device_interface_config_t devcfg_pmw = {
     .duty_cycle_pos = 128,  // default 128 = 50%/50% duty
     .cs_ena_pretrans = 0, // 0 not used
     .cs_ena_posttrans = 0,  // 0 not used
-    .clock_speed_hz = 4000000,// 8,9,10,11,13,16,20,26,40,80
+    .clock_speed_hz = 2000000,// 8,9,10,11,13,16,20,26,40,80
     .spics_io_num = PMW_CS,
     .flags = 0,  // 0 not used
     .queue_size = 10,// transactionのキュー数。1以上の値を入れておく。
@@ -183,7 +183,7 @@ int8_t spi_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *
     trans.tx_buffer = Buffer;
     trans.rx_buffer = NULL;
     trans.length = 16;
-    trans.rxlength = 0;
+    //trans.rxlength = 0;
 
     //書き込み
     ret = spi_device_polling_transmit(pmw, &trans);

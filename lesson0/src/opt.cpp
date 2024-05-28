@@ -4,21 +4,22 @@
 optconfig_t optconfig;
 
 
-// Low level register access
+// SPI Write
 void registerWrite(uint8_t reg, uint8_t value) {
   spi_write(reg, &value, 1, &pmw);
   delayMicroseconds(200);
 }
 
+// SPI Read
 uint8_t registerRead(uint8_t reg) {
   uint8_t value;
-  spi_read(reg, &value, 1, pmw);
+  spi_read(reg, &value, 1, &pmw);
   delayMicroseconds(200);
   return value;
 }
 
-// Performance optimisation registers
-void initRegisters()
+// Performance optimisation registers set
+void initRegisters(void)
 {
   registerWrite(0x7F, 0x00);
   registerWrite(0x61, 0xAD);
@@ -97,9 +98,7 @@ void initRegisters()
   registerWrite(0x40, 0x80);
 }
 
-
-
-uint8_t opt_init(optconfig_t* optconfig) {
+uint8_t powerUp(optconfig_t* optconfig) {
   // Setup SPI port
   delay(45);
   digitalWrite(PMW_CS, HIGH);
@@ -125,9 +124,6 @@ uint8_t opt_init(optconfig_t* optconfig) {
   registerRead(0x05);
   registerRead(0x06);
   delay(1);
-
-  initRegisters();
-
   return true;
 }
 
@@ -136,4 +132,119 @@ void readMotionCount(int16_t *deltaX, int16_t *deltaY)
   registerRead(0x02);
   *deltaX = ((int16_t)registerRead(0x04) << 8) | registerRead(0x03);
   *deltaY = ((int16_t)registerRead(0x06) << 8) | registerRead(0x05);
+}
+
+void enableFrameCaptureMode(void)
+{
+  //Step 1. To enter Frame Capture mode
+  uint8_t tmp;
+
+  //
+  registerWrite(0x7F, 0x07);
+  tmp = registerRead(0x7F);
+  USBSerial.printf("(07)%02X\n\r", tmp);
+  //
+  registerWrite(0x41, 0x1D);
+  tmp = registerRead(0x41);
+  USBSerial.printf("(1D)%02X\n\r", tmp);
+  //
+  registerWrite(0x4C, 0x00);
+  tmp = registerRead(0x4C);
+  USBSerial.printf("(00)%02X\n\r", tmp);
+  //
+  registerWrite(0x7F, 0x08);
+  tmp = registerRead(0x7F);
+  USBSerial.printf("(08)%02X\n\r", tmp);
+  //
+  registerWrite(0x6A, 0x38);
+  tmp = registerRead(0x6A);
+  USBSerial.printf("(38)%02X\n\r", tmp);
+  //
+  registerWrite(0x7F, 0x00);
+  tmp = registerRead(0x7F);
+  USBSerial.printf("(00)%02X\n\r", tmp);
+  //
+  registerWrite(0x55, 0x04);
+  tmp = registerRead(0x55);
+  USBSerial.printf("(04)%02X\n\r", tmp);
+  //
+  registerWrite(0x40, 0x80);
+  tmp = registerRead(0x40);
+  USBSerial.printf("(80)%02X\n\r", tmp);
+  //
+  registerWrite(0x4D, 0x11);
+  tmp = registerRead(0x4D);
+  USBSerial.printf("(11)%02X\n\r", tmp);
+
+  //Step 2.
+  registerWrite(0x70, 0x00); 
+  tmp = registerRead(0x70);
+  USBSerial.printf("(00)%02X\n\r", tmp);
+  //
+  registerWrite(0x58, 0xFF);
+  tmp = registerRead(0x58);
+  USBSerial.printf("(FF)%02X\n\r", tmp);
+
+  //Step 3. Poll RawData_Grab_Status register
+  uint8_t buf;
+  uint8_t status;
+
+  do 
+  {
+    delay(1);
+    buf = registerRead(0x59);
+    status = buf>>6;
+    //USBSerial.printf("Register(0x59) %02X\n\r", buf);
+  } while(buf == 0x00);
+
+  USBSerial.printf("PMW Status %X\n\r", status);
+
+  delayMicroseconds(50);
+}
+
+void readImage(uint8_t *image)
+{
+  int count = 0;
+  uint8_t a; //temp value for reading register
+  uint8_t b; //temp value for second register
+  uint8_t hold; //holding value for checking bits
+  uint8_t mask = 0x0c; //mask to take bits 2 and 3 from b
+  uint8_t pixel = 0; //temp holding value for pixel
+
+  for (uint16_t i = 0; i < 1225; i++) 
+  { //for 1 frame of 1225 pixels (35*35)
+    
+    do 
+    { 
+      //if data is either invalid status
+      //check status bits 6 and 7
+      //if 01 move upper 6 bits into temp value
+      //if 00 or 11, reread
+      //else lower 2 bits into temp value
+      a = registerRead(0x58); //read register
+      hold = (a >> 6)&0b00000011; //right shift to leave top two bits for ease of check.
+      //USBSerial.printf("%04d, %X\n\r", i, hold);
+    } while((hold == 0x03) || (hold == 0x00));
+    
+    if (hold == 0x01) 
+    { //if data is upper 6 bits
+      b = registerRead(0x58); //read next set to get lower 2 bits
+      pixel = a; //set pixel to a
+      pixel = pixel << 2; //push left to 7:2
+      pixel += (b & mask); //set lower 2 from b to 1:0
+      image[count++] = pixel; //put temp value in fbuffer array
+      //delayMicroseconds(100);
+    }
+  }
+  registerWrite(0x70, 0x00);   //More magic? 
+  registerWrite(0x58, 0xFF);
+
+  int buf;
+  uint8_t status; 
+
+  do 
+  { //keep reading and testing
+    buf = registerRead(0x58); //read status register
+    status = buf>>6; //rightshift 6 bits so only top two stay 
+  } while(status == 0x03); //while bits aren't set denoting ready state
 }

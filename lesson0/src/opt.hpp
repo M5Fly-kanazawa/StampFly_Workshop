@@ -18,8 +18,11 @@ typedef struct {
 
 extern optconfig_t optconfig;
 
-uint8_t opt_init(optconfig_t* optconfig);
+uint8_t powerUp(optconfig_t* optconfig);
+void initRegisters(void);
 void readMotionCount(int16_t *deltaX, int16_t *deltaY);
+void enableFrameCaptureMode(void);
+void readImage(uint8_t *image);
 
 
 //#ifdef __cplusplus

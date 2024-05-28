@@ -1,7 +1,43 @@
 #include "Opt_kalman.hpp"
+#include <math.h>
 
-void Opt_kalman::update(void)
+void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
 {
+  asx = accel[0];
+  asy = accel[1];
+  asz = accel[2];
+
+  float s_phi, s_tht, s_psi;
+  float c_phi, c_tht, c_psi;
+
+  float phi = euler[0];
+  float tht = euler[1];
+  float psi = euler[2];
+
+  s_phi = sin(phi);
+  s_tht = sin(tht);
+  s_psi = sin(psi);
+
+  c_phi = cos(phi);
+  c_tht = cos(tht);
+  c_psi = cos(psi);
+  
+  r11 = c_tht*c_psi;
+  r12 = s_phi*s_tht*c_psi - c_phi*s_psi;
+  r13 = c_phi*s_tht*c_psi + s_phi*s_psi;
+
+  r21 = c_tht*s_psi;
+  r22 = s_phi*s_tht*s_psi + c_phi*c_psi;
+  r23 = c_phi*s_tht*s_psi - s_phi*c_psi;
+
+  r31 = -s_tht;
+  r32 =  s_phi*c_tht;
+  r33 =  c_phi*c_tht;
+
+  z1 = observation[0];
+  z2 = observation[1];
+  z3 = observation[2];
+  
   _x1 = asx*h - h*x7 + x1;
   _x2 = asy*h - h*x8 + x2;
   _x3 = asz*h - h*x9 + x3;
@@ -142,8 +178,8 @@ void Opt_kalman::update(void)
   k92 = _p91*si12 + _p92*si22 + _p96*si32/r33;
   k93 = _p91*si13 + _p92*si23 + _p96*si33/r33;
 
-  e1 = -x1 + z1;
-  e2 = -x2 + z2;
+  e1 = z1 - x1;
+  e2 = z2 - x2;
   e3 = z3 - x6/r33;
 
   x1 = _x1 + e1*k11 + e2*k12 + e3*k13;
@@ -289,5 +325,10 @@ Opt_kalman::Opt_kalman()
   x7 = 0.0;
   x8 = 0.0;
   x9 = 0.0;
+
+  beta_x = -0.01;
+  beta_y = -0.01;
+  beta_z = -0.01;
+
 
 }

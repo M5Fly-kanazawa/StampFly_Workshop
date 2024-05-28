@@ -3,7 +3,7 @@
 
 class Opt_kalman
 {
-	float h;
+	//float h;
 
 	float p11,p12,p13,p14,p15,p16,p17,p18,p19;
 	float p21,p22,p23,p24,p25,p26,p27,p28,p29;
@@ -55,15 +55,21 @@ class Opt_kalman
 	float k91,k92,k93;
 
 	float e1,e2,e3;
+	//Observation
+	//z1: u z2:v z3:sens_altitude
 	float z1,z2,z3;
 
+	//state
+	//x1:u  x2:v  x3:w
+	//x4:x  x5:y  x6:z
+	//x7:bx x8:by x9:bz
 	float x1,x2,x3,x4,x5,x6,x7,x8,x9;
 	float _x1,_x2,_x3,_x4,_x5,_x6,_x7,_x8,_x9;
 	float asx,asy,asz;
 
 	public:
 	Opt_kalman();
-	void update(void);
+	void update(float *accel, float euler, float *observation, float h);
 	void set_state(float* state);
 	void get_state(float* state);
 

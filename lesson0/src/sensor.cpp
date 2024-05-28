@@ -1,6 +1,8 @@
 #include "sensor.hpp"
 #include "flight_control.hpp"
 
+//Table height 685mm
+
 /************ BEEP ************/
 //BeepPWM出力Pinのアサイン
 #define BEEP 40
@@ -195,9 +197,8 @@ void sensor_init()
   else {USBSerial.printf("SPI INIT Success!\n\r");while(1);}
   
   imu_init();
-  opt_init(&optconfig);
-  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
-  if(optconfig.chipid!=0x49)while(1);
+  //USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  //if(optconfig.chipid!=0x49)while(1);
 
   //if (!flow.begin()) {
   //  USBSerial.println("Initialization of the flow sensor failed");
@@ -258,29 +259,53 @@ void sensor_init()
   alt_filter.set_parameter(0.01, 0.0025);
   */
 
-  uint16_t flowcnt=0;
-  
-  while(0)
-  {
-    // Get motion count since last call
-    readMotionCount(&deltaX, &deltaY);
+  #if 0
+  //PMW3901 image capture test
+  powerUp(&optconfig);
+  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  if(optconfig.chipid!=0x49)while(1);
+  //initRegisters();これをするとキャプチャできない
 
-    USBSerial.print(flowcnt);
-    USBSerial.print(" X: ");
-    USBSerial.print(deltaX);
-    USBSerial.print(", Y: ");
-    USBSerial.print(deltaY);
-    USBSerial.print("\r\n");
-    delay(10);
-    flowcnt++;
-  }
+  uint8_t image[35*35];
+  USBSerial.printf("Change to Frame Capture Mode\n\r");
+  enableFrameCaptureMode();
+  USBSerial.printf("Success to change to Frame Capture Mode\n\r");
+  USBSerial.printf("Reading image.....\n\r");
   
+  //initRegisters();ここでやってもキャプチャできない
+
+  for (int8_t ii=0; ii<10; ii++)
+  {
+    readImage(image);
+    USBSerial.printf("Finish reading image.\n\r");
+      
+    USBSerial.printf("[");
+    for (uint8_t y = 0; y < 35; y++)
+    {
+      USBSerial.printf("[");
+      for (uint8_t x = 0; x < 35; x++)
+      {
+        USBSerial.printf("%d",image[x+y*35]);
+        if (x!=34) USBSerial.printf(",");
+      }
+      USBSerial.printf("],\n\r");
+    }
+    USBSerial.printf("]\n\r");
+  }
+  #endif
+
+  powerUp(&optconfig);
+  USBSerial.printf("OPT ID(0x49):%02X\r\n", optconfig.chipid);
+  if(optconfig.chipid!=0x49)while(1);
+  initRegisters();
+
 }
 
 float sensor_read(void)
 {
   float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
   float ax, ay, az, gx, gy, gz, acc_norm, rate_norm;
+  float velocity_x,velocity_y;
   float filterd_v;
   static float dp, dq, dr; 
   static uint16_t dcnt=0u;
@@ -393,7 +418,7 @@ float sensor_read(void)
         }
         alt_sensing_time = micros()*1.0e-6- alt_time;
 
-        USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
+        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
     }
     else dcnt++;
@@ -447,9 +472,12 @@ float sensor_read(void)
   
   if (opt_interval > 0.01)
   {
-    opt_interval = 0.0;
+    
     readMotionCount(&deltaX, &deltaY);
-    //USBSerial.printf("%7.2f %5d %5d %f\r\n", Elapsed_time, deltaX, deltaY, Accel_z_raw);
+    velocity_x = (0.0254 * (float)deltaX * Altitude2/11.914)/opt_interval;
+    velocity_y = (0.0254 * (float)deltaY * Altitude2/11.914)/opt_interval;
+    USBSerial.printf("%7.2f %f %f %f\r\n", Elapsed_time, velocity_x, velocity_y, Altitude2);
+    opt_interval = 0.0;
   }
   
 

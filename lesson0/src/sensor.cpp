@@ -325,7 +325,9 @@ float sensor_read(void)
   float alt_sensing_time;
   static float opt_interval =0.0;
   static float pos_interval =0.0;
-
+  float euler[3];
+  float accel[3];
+  float observtion[3];
 
   st = micros();
   old_sensor_time = sensor_time;
@@ -383,9 +385,7 @@ float sensor_read(void)
 
     //Get Altitude (30Hz)
     Az = az_filter.update(-Accel_z_d, sens_interval);
-    EstimatePosition.update();
     
-
     if (dcnt>interval)
     {
       if(ToF_bottom_data_ready_flag)
@@ -479,7 +479,19 @@ float sensor_read(void)
     USBSerial.printf("%7.2f %f %f %f\r\n", Elapsed_time, velocity_x, velocity_y, Altitude2);
     opt_interval = 0.0;
   }
+    accel[0] = Accel_x;
+    accel[1] = Accel_y;
+    accel[2] = Accel_z;
+    euler[0] = Roll_angle;
+    euler[1] = Pitch_angle;
+    euler[2] = Yaw_angle;
+    observtion[0] = velocity_x;
+    observtion[1] = velocity_y;
+    observtion[2] = Altitude2;
+    EstimatePosition.update(accel, euler, observtion, Interval_time);
   
+
+
 
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);

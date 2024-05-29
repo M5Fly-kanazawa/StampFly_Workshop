@@ -69,7 +69,7 @@ class Opt_kalman
 
 	public:
 	Opt_kalman();
-	void update(float *accel, float euler, float *observation, float h);
+	void update(float *accel, float *euler, float *observation, float h);
 	void set_state(float* state);
 	void get_state(float* state);
 

@@ -1,18 +1,21 @@
 #include "Opt_kalman.hpp"
 #include <math.h>
+#include <Arduino.h>
 
 void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
 {
-  asx = accel[0];
-  asy = accel[1];
-  asz = accel[2];
+  //加速度センサ値
+  asx = 0.0;//accel[0];
+  asy = 0.0;//accel[1];
+  asz = 0.0;//accel[2];
 
+  //DCM取得
   float s_phi, s_tht, s_psi;
   float c_phi, c_tht, c_psi;
 
-  float phi = euler[0];
-  float tht = euler[1];
-  float psi = euler[2];
+  float phi = 0.0;//euler[0];
+  float tht = 0.0;//euler[1];
+  float psi = 0.0;//euler[2];
 
   s_phi = sin(phi);
   s_tht = sin(tht);
@@ -34,10 +37,12 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   r32 =  s_phi*c_tht;
   r33 =  c_phi*c_tht;
 
-  z1 = observation[0];
-  z2 = observation[1];
-  z3 = observation[2];
+  //観測量取得
+  z1 = 0.0;//observation[0];
+  z2 = 0.0;//observation[1];
+  z3 = 0.0;//observation[2];
   
+  //予測更新(状態)
   _x1 = asx*h - h*x7 + x1;
   _x2 = asy*h - h*x8 + x2;
   _x3 = asz*h - h*x9 + x3;
@@ -47,7 +52,7 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   _x7 = x7*(beta_x*h + 1);
   _x8 = x8*(beta_y*h + 1);
   _x9 = x9*(beta_z*h + 1);  
-
+  //予測更新(誤差共分散)
   _p11 = h*h*q1 - h*p71 - h*(-h*p77 + p17) + p11;
   _p12 = -h*p72 - h*(-h*p78 + p18) + p12;
   _p13 = -h*p73 - h*(-h*p79 + p19) + p13;
@@ -130,6 +135,7 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   _p98 = p98*(beta_y*h + 1)*(beta_z*h + 1);
   _p99 = p99*(beta_z*h + 1)*(beta_z*h + 1);
 
+  //カルマンゲイン更新
   s11 = _p11 + r1;
   s12 = _p12;
   s13 = _p16/r33;
@@ -178,10 +184,12 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   k92 = _p91*si12 + _p92*si22 + _p96*si32/r33;
   k93 = _p91*si13 + _p92*si23 + _p96*si33/r33;
 
+  //イノベーション取得
   e1 = z1 - x1;
   e2 = z2 - x2;
   e3 = z3 - x6/r33;
 
+  //観測更新(状態)
   x1 = _x1 + e1*k11 + e2*k12 + e3*k13;
   x2 = _x2 + e1*k21 + e2*k22 + e3*k23;
   x3 = _x3 + e1*k31 + e2*k32 + e3*k33;
@@ -191,7 +199,7 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   x7 = _x7 + e1*k71 + e2*k72 + e3*k73;
   x8 = _x8 + e1*k81 + e2*k82 + e3*k83;
   x9 = _x9 + e1*k91 + e2*k92 + e3*k93;
-
+  //観測更新(誤差共分散)
   p11 = _p11*(1 - k11) - _p21*k12 - _p61*k13/r33;
   p12 = _p12*(1 - k11) - _p22*k12 - _p62*k13/r33;
   p13 = _p13*(1 - k11) - _p23*k12 - _p63*k13/r33;
@@ -273,6 +281,10 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   p97 = -_p17*k91 - _p27*k92 - _p67*k93/r33 + _p97;
   p98 = -_p18*k91 - _p28*k92 - _p68*k93/r33 + _p98;
   p99 = -_p19*k91 - _p29*k92 - _p69*k93/r33 + _p99;
+
+  kalman_time = kalman_time + h;
+  USBSerial.printf("%f %f %f %f %f %f %f %f\n\r", kalman_time, h, x1, x2, x3, x4, x5, x6);
+
 }
 
 void Opt_kalman::set_state(float* state)
@@ -305,17 +317,7 @@ void Opt_kalman::get_state(float* state)
 Opt_kalman::Opt_kalman()
 {
   //h =0.0025;
-
-  p11 = 100.0;p12 = 100.0;p13 = 100.0;p14 = 100.0;p15 = 100.0;p16 = 100.0;p17 = 100.0;p18 = 100.0;p19 = 100.0;
-  p21 = 100.0;p22 = 100.0;p23 = 100.0;p24 = 100.0;p25 = 100.0;p26 = 100.0;p27 = 100.0;p28 = 100.0;p29 = 100.0;
-  p31 = 100.0;p32 = 100.0;p33 = 100.0;p34 = 100.0;p35 = 100.0;p36 = 100.0;p37 = 100.0;p38 = 100.0;p39 = 100.0;
-  p41 = 100.0;p42 = 100.0;p43 = 100.0;p44 = 100.0;p45 = 100.0;p46 = 100.0;p47 = 100.0;p48 = 100.0;p49 = 100.0;
-  p51 = 100.0;p52 = 100.0;p53 = 100.0;p54 = 100.0;p55 = 100.0;p56 = 100.0;p57 = 100.0;p58 = 100.0;p59 = 100.0;
-  p61 = 100.0;p62 = 100.0;p63 = 100.0;p64 = 100.0;p65 = 100.0;p66 = 100.0;p67 = 100.0;p68 = 100.0;p69 = 100.0;
-  p71 = 100.0;p72 = 100.0;p73 = 100.0;p74 = 100.0;p75 = 100.0;p76 = 100.0;p77 = 100.0;p78 = 100.0;p79 = 100.0;
-  p81 = 100.0;p82 = 100.0;p83 = 100.0;p84 = 100.0;p85 = 100.0;p86 = 100.0;p87 = 100.0;p88 = 100.0;p89 = 100.0;
-  p91 = 100.0;p92 = 100.0;p93 = 100.0;p94 = 100.0;p95 = 100.0;p96 = 100.0;p97 = 100.0;p98 = 100.0;p99 = 100.0;
-
+  //状態初期化
   x1 = 0.0;
   x2 = 0.0;
   x3 = 0.0;
@@ -325,10 +327,29 @@ Opt_kalman::Opt_kalman()
   x7 = 0.0;
   x8 = 0.0;
   x9 = 0.0;
+  //誤差共分散初期化
+  p11 = 100.0;p12 =   0.0;p13 =   0.0;p14 =   0.0;p15 =   0.0;p16 =   0.0;p17 =   0.0;p18 =   0.0;p19 =   0.0;
+  p21 =   0.0;p22 = 100.0;p23 =   0.0;p24 =   0.0;p25 =   0.0;p26 =   0.0;p27 =   0.0;p28 =   0.0;p29 =   0.0;
+  p31 =   0.0;p32 =   0.0;p33 = 100.0;p34 =   0.0;p35 =   0.0;p36 =   0.0;p37 =   0.0;p38 =   0.0;p39 =   0.0;
+  p41 =   0.0;p42 =   0.0;p43 =   0.0;p44 = 100.0;p45 =   0.0;p46 =   0.0;p47 =   0.0;p48 =   0.0;p49 =   0.0;
+  p51 =   0.0;p52 =   0.0;p53 =   0.0;p54 =   0.0;p55 = 100.0;p56 =   0.0;p57 =   0.0;p58 =   0.0;p59 =   0.0;
+  p61 =   0.0;p62 =   0.0;p63 =   0.0;p64 =   0.0;p65 =   0.0;p66 = 100.0;p67 =   0.0;p68 =   0.0;p69 =   0.0;
+  p71 =   0.0;p72 =   0.0;p73 =   0.0;p74 =   0.0;p75 =   0.0;p76 =   0.0;p77 = 100.0;p78 =   0.0;p79 =   0.0;
+  p81 =   0.0;p82 =   0.0;p83 =   0.0;p84 =   0.0;p85 =   0.0;p86 =   0.0;p87 =   0.0;p88 = 100.0;p89 =   0.0;
+  p91 =   0.0;p92 =   0.0;p93 =   0.0;p94 =   0.0;p95 =   0.0;p96 =   0.0;p97 =   0.0;p98 =   0.0;p99 = 100.0;
 
+  //バイアスシステム係数
   beta_x = -0.01;
   beta_y = -0.01;
   beta_z = -0.01;
+  //システムノイズ分散
+  q1=0.01;
+  q2=0.01;
+  q3=0.01;
+  //観測ノイズ分散
+  r1=0.01;
+  r2=0.01;
+  r3=0.01;
 
-
+  kalman_time = 0.0;
 }

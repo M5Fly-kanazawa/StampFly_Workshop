@@ -314,6 +314,8 @@ void loop_400Hz(void)
     //Mode change
     Mode = PARKING_MODE;
     S_time = micros();
+    Elapsed_time = 0.0;
+    Old_Elapsed_time = 0.0;
     return;
   }
   else if( Mode == FLIGHT_MODE)

@@ -66,6 +66,7 @@ class Opt_kalman
 	float x1,x2,x3,x4,x5,x6,x7,x8,x9;
 	float _x1,_x2,_x3,_x4,_x5,_x6,_x7,_x8,_x9;
 	float asx,asy,asz;
+	float kalman_time;
 
 	public:
 	Opt_kalman();

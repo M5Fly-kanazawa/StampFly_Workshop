@@ -449,6 +449,25 @@ float sensor_read(void)
     //Altitude2 = r33 * Altitude;
     //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
 
+    if (opt_interval > 0.01)
+    {    
+      readMotionCount(&deltaX, &deltaY);
+      velocity_x = (0.0254 * (float)deltaX * Altitude2/11.914)/opt_interval;
+      velocity_y = (0.0254 * (float)deltaY * Altitude2/11.914)/opt_interval;
+      //USBSerial.printf("%7.2f %f %f %f\r\n", Elapsed_time, velocity_x, velocity_y, Altitude2);
+      opt_interval = 0.0;
+    }
+    accel[0] = Accel_x;
+    accel[1] = Accel_y;
+    accel[2] = Accel_z;
+    euler[0] = Roll_angle;
+    euler[1] = Pitch_angle;
+    euler[2] = Yaw_angle;
+    observtion[0] = velocity_x;
+    observtion[1] = velocity_y;
+    observtion[2] = Altitude;
+    EstimatePosition.update(accel, euler, observtion, Interval_time);
+
   }
 
   //Accel fail safe
@@ -470,29 +489,6 @@ float sensor_read(void)
     if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
   }
   
-  if (opt_interval > 0.01)
-  {
-    
-    readMotionCount(&deltaX, &deltaY);
-    velocity_x = (0.0254 * (float)deltaX * Altitude2/11.914)/opt_interval;
-    velocity_y = (0.0254 * (float)deltaY * Altitude2/11.914)/opt_interval;
-    USBSerial.printf("%7.2f %f %f %f\r\n", Elapsed_time, velocity_x, velocity_y, Altitude2);
-    opt_interval = 0.0;
-  }
-    accel[0] = Accel_x;
-    accel[1] = Accel_y;
-    accel[2] = Accel_z;
-    euler[0] = Roll_angle;
-    euler[1] = Pitch_angle;
-    euler[2] = Yaw_angle;
-    observtion[0] = velocity_x;
-    observtion[1] = velocity_y;
-    observtion[2] = Altitude2;
-    EstimatePosition.update(accel, euler, observtion, Interval_time);
-  
-
-
-
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);
 

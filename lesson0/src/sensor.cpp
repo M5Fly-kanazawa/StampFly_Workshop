@@ -36,6 +36,8 @@ Filter raw_gx_filter;
 Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
+Filter u_filter;
+Filter v_filter;
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -242,7 +244,8 @@ void sensor_init()
   raw_az_d_filter.set_parameter(0.1, 0.0025);//alt158
   az_filter.set_parameter(0.1, 0.0025);//alt158
   alt_filter.set_parameter(0.01, 0.0025);
-
+  u_filter.set_parameter(0.1, 0.01);
+  v_filter.set_parameter(0.1, 0.01);
   /*//SoSo
   acc_filter.set_parameter(0.005, 0.0025);
   
@@ -305,7 +308,11 @@ float sensor_read(void)
 {
   float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
   float ax, ay, az, gx, gy, gz, acc_norm, rate_norm;
-  float velocity_x,velocity_y;
+  static float velocity_x,velocity_y;
+  static float old_velocity_x[4]={0};
+  static float old_velocity_y[4]={0};
+  float deff_velocity_x;
+  float deff_velocity_y;
   float filterd_v;
   static float dp, dq, dr; 
   static uint16_t dcnt=0u;
@@ -451,23 +458,71 @@ float sensor_read(void)
 
     if (opt_interval > 0.01)
     {    
-      readMotionCount(&deltaX, &deltaY);
-      velocity_x = (0.0254 * (float)deltaX * Altitude2/11.914)/opt_interval;
-      velocity_y = (0.0254 * (float)deltaY * Altitude2/11.914)/opt_interval;
-      //USBSerial.printf("%7.2f %f %f %f\r\n", Elapsed_time, velocity_x, velocity_y, Altitude2);
+      readMotionCount(&deltaY, &deltaX);
+      velocity_x = -(0.0254 * (float)deltaX * Altitude/11.914)/opt_interval;
+      velocity_y =  (0.0254 * (float)deltaY * Altitude/11.914)/opt_interval;
+      //外れ値処理
+      deff_velocity_x = velocity_x - old_velocity_x[1];
+      if ( deff_velocity_x > 2.0 )
+      {
+        velocity_x = old_velocity_x[1] + (old_velocity_x[1] - old_velocity_x[2])/2;
+      }
+      else if ( deff_velocity_x < -2.0 )
+      {
+        velocity_x = old_velocity_x[1] + (old_velocity_x[1] - old_velocity_x[2])/2;
+      }
+      else
+      {
+        old_velocity_x[3] = old_velocity_x[2];
+        old_velocity_x[2] = old_velocity_x[1];
+        old_velocity_x[1] = velocity_x;
+      }
+
+      deff_velocity_y = velocity_y - old_velocity_y[1];
+      if ( deff_velocity_y > 2.0 )
+      {
+        velocity_y = old_velocity_y[1] + (old_velocity_y[1] - old_velocity_y[2])/2;
+      }
+      else if ( deff_velocity_y < -2.0 )
+      {
+        velocity_y = old_velocity_y[1] + (old_velocity_y[1] - old_velocity_y[2])/2;
+      }
+      else
+      {
+        old_velocity_y[3] = old_velocity_y[2];
+        old_velocity_y[2] = old_velocity_y[1];
+        old_velocity_y[1] = velocity_y;
+      }
+
+
+
+
+
+      //USBSerial.printf("%7.2f %f %f %f %d %d\r\n", Elapsed_time, 
+      //        u_filter.update(velocity_x, opt_interval), 
+      //        v_filter.update(velocity_y, opt_interval), 
+      //        Altitude,
+      //        deltaY,
+      //        -deltaX);
+
+      accel[0] = Accel_x;
+      accel[1] = Accel_y;
+      accel[2] = Accel_z;
+      euler[0] = Roll_angle;
+      euler[1] = Pitch_angle;
+      euler[2] = Yaw_angle;
+
+      observtion[0] = velocity_x;
+      observtion[1] = velocity_y;
+      observtion[2] = Altitude;
+      
+      EstimatePosition.update(accel, euler, observtion, opt_interval);
       opt_interval = 0.0;
     }
-    accel[0] = Accel_x;
-    accel[1] = Accel_y;
-    accel[2] = Accel_z;
-    euler[0] = Roll_angle;
-    euler[1] = Pitch_angle;
-    euler[2] = Yaw_angle;
-    observtion[0] = velocity_x;
-    observtion[1] = velocity_y;
-    observtion[2] = Altitude;
-    EstimatePosition.update(accel, euler, observtion, Interval_time);
-
+  }
+  else
+  {
+    opt_interval = 0.0;
   }
 
   //Accel fail safe

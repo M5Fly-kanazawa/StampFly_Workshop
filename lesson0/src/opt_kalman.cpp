@@ -5,17 +5,17 @@
 void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
 {
   //加速度センサ値
-  asx = 0.0;//accel[0];
-  asy = 0.0;//accel[1];
-  asz = 0.0;//accel[2];
+  asx =  accel[0]*9.80665;
+  asy =  accel[1]*9.80665;
+  asz =  accel[2]*9.80665;
 
   //DCM取得
   float s_phi, s_tht, s_psi;
   float c_phi, c_tht, c_psi;
 
-  float phi = 0.0;//euler[0];
-  float tht = 0.0;//euler[1];
-  float psi = 0.0;//euler[2];
+  float phi = euler[0];
+  float tht = euler[1];
+  float psi = euler[2];
 
   s_phi = sin(phi);
   s_tht = sin(tht);
@@ -38,9 +38,9 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   r33 =  c_phi*c_tht;
 
   //観測量取得
-  z1 = 0.0;//observation[0];
-  z2 = 0.0;//observation[1];
-  z3 = 0.0;//observation[2];
+  z1 = observation[0];
+  z2 = observation[1];
+  z3 = -observation[2];
   
   //予測更新(状態)
   _x1 = asx*h - h*x7 + x1;
@@ -283,7 +283,7 @@ void Opt_kalman::update(float *accel, float *euler, float *observation, float h)
   p99 = -_p19*k91 - _p29*k92 - _p69*k93/r33 + _p99;
 
   kalman_time = kalman_time + h;
-  USBSerial.printf("%f %f %f %f %f %f %f %f\n\r", kalman_time, h, x1, x2, x3, x4, x5, x6);
+  USBSerial.printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n\r", kalman_time, h, x1, x2, x3, x4, x5, x6, x7, x8, x9, z1, z2, z3, psi);
 
 }
 
@@ -339,17 +339,17 @@ Opt_kalman::Opt_kalman()
   p91 =   0.0;p92 =   0.0;p93 =   0.0;p94 =   0.0;p95 =   0.0;p96 =   0.0;p97 =   0.0;p98 =   0.0;p99 = 100.0;
 
   //バイアスシステム係数
-  beta_x = -0.01;
-  beta_y = -0.01;
-  beta_z = -0.01;
+  beta_x = -0.0001;
+  beta_y = -0.0001;
+  beta_z = -0.0001;
   //システムノイズ分散
-  q1=0.01;
-  q2=0.01;
-  q3=0.01;
+  q1=1.0*1.0;
+  q2=1.0*1.0;
+  q3=1.0*1.0;
   //観測ノイズ分散
-  r1=0.01;
-  r2=0.01;
-  r3=0.01;
+  r1=0.004*0.004;
+  r2=0.004*0.004;
+  r3=0.004*0.004;
 
   kalman_time = 0.0;
 }

@@ -16,6 +16,9 @@
 #include "tof.hpp"
 #include "opt.hpp"
 #include "opt_kalman.hpp"
+#include "i2c.hpp"
+#include "mag.hpp"
+#include "pressure.hpp"
 
 //#define SDA_PIN (46)
 //#define SCL_PIN (41)

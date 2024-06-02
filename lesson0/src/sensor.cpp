@@ -20,6 +20,9 @@ const int beep_resolution = 12;
 const int beep_channel  = 7;
 /************ BEEP ************/
 
+
+BMM150 Mag;
+BMP280 Pressure;
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
 Opt_kalman EstimatePosition;
@@ -48,6 +51,7 @@ volatile float Accel_z_offset=0.0f;
 volatile float Accel_x_raw,Accel_y_raw,Accel_z_raw;
 volatile float Accel_x,Accel_y,Accel_z;
 volatile float Roll_rate_raw,Pitch_rate_raw,Yaw_rate_raw;
+volatile int16_t Mag_x_raw, Mag_y_raw, Mag_z_raw;
 volatile float Mx,My,Mz,Mx0,My0,Mz0,Mx_ave,My_ave,Mz_ave;
 volatile float Altitude = 0.0f;
 volatile float Altitude2 = 0.0f;
@@ -80,29 +84,7 @@ void beep_init(void)
   #endif
 }
 
-uint8_t scan_i2c()
-{
-  USBSerial.println ("I2C scanner. Scanning ...");
-  delay(50);
-  byte count = 0;
-  for (uint8_t i = 1; i < 127; i++)
-  {
-    Wire1.beginTransmission (i);          // Begin I2C transmission Address (i)
-    if (Wire1.endTransmission () == 0)  // Receive 0 = success (ACK response) 
-    {
-      USBSerial.print ("Found address: ");
-      USBSerial.print (i, DEC);
-      USBSerial.print (" (0x");
-      USBSerial.print (i, HEX); 
-      USBSerial.println (")");
-      count++;
-    }
-  }
-  USBSerial.print ("Found ");      
-  USBSerial.print (count, DEC);        // numbers of devices
-  USBSerial.println (" device(s).");
-  return count;
-}
+
 
 void sensor_reset_offset(void)
 {
@@ -185,14 +167,36 @@ void sensor_init()
 {
   //beep_init();
  
+  //i2c_master_init();
   Wire1.begin(SDA_PIN, SCL_PIN,400000UL);
-  if(scan_i2c()==0)
+  if(i2c_scan()==0)
   {
     USBSerial.printf("No I2C device!\r\n");
     USBSerial.printf("Can not boot AtomFly2.\r\n");
     while(1);
   }
+  //Magnet sensor init
+  if (Mag.initialize() == BMM150_E_ID_NOT_CONFORM) 
+  {
+    USBSerial.printf("#BMM150 Chip ID can not read!\n\r");
+    while (1);
+  } 
+  else 
+  {
+    USBSerial.printf("#BMM150 Initialize done!\n\r");
+  }
+  Mag.set_op_mode(BMM150_FORCED_MODE);
 
+  if(!Pressure.begin())
+  {
+    USBSerial.printf("#BMP280 init failed!\n\r");
+    while(1);
+  }
+  else USBSerial.printf("#BMP280 init success!\n\r");
+  Pressure.setOversampling(0);
+
+
+  //ToF init
   tof_init();
   //SPI init
   if(spi_init()==ESP_OK){USBSerial.printf("SPI INIT Success!\n\r");}
@@ -308,6 +312,8 @@ float sensor_read(void)
 {
   float acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
   float ax, ay, az, gx, gy, gz, acc_norm, rate_norm;
+  float mx, my, mz; 
+  bmm150_mag_data magvalue;
   static float velocity_x,velocity_y;
   static float old_velocity_x[4]={0};
   static float old_velocity_y[4]={0};
@@ -335,6 +341,8 @@ float sensor_read(void)
   float euler[3];
   float accel[3];
   float observtion[3];
+
+  static uint8_t result=0;
 
   st = micros();
   old_sensor_time = sensor_time;
@@ -364,12 +372,17 @@ float sensor_read(void)
   //USBSerial.printf("%9.6f %9.6f %9.6f\n\r", Elapsed_time, sens_interval, acc_z);
 
   //Axis Transform
-  Accel_x_raw =  acc_y;
-  Accel_y_raw =  acc_x;
-  Accel_z_raw = -acc_z;
-  Roll_rate_raw  =  gyro_y;
-  Pitch_rate_raw =  gyro_x;
-  Yaw_rate_raw   = -gyro_z;
+  Accel_x_raw =   acc_y;
+  Accel_y_raw =   acc_x;
+  Accel_z_raw = - acc_z;
+  Roll_rate_raw  =   gyro_y;
+  Pitch_rate_raw =   gyro_x;
+  Yaw_rate_raw   = - gyro_z;
+
+  
+
+
+
 
   if(Mode > AVERAGE_MODE)
   {
@@ -427,6 +440,8 @@ float sensor_read(void)
 
         //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
+
+    
     }
     else dcnt++;
 
@@ -494,10 +509,6 @@ float sensor_read(void)
         old_velocity_y[1] = velocity_y;
       }
 
-
-
-
-
       //USBSerial.printf("%7.2f %f %f %f %d %d\r\n", Elapsed_time, 
       //        u_filter.update(velocity_x, opt_interval), 
       //        v_filter.update(velocity_y, opt_interval), 
@@ -518,6 +529,43 @@ float sensor_read(void)
       
       EstimatePosition.update(accel, euler, observtion, opt_interval);
       opt_interval = 0.0;
+
+      //Mag
+      Mag.read_mag_data();
+      Mag.set_op_mode(BMM150_FORCED_MODE);
+      Mag_x_raw = - Mag.raw_mag_data.raw_datay;
+      Mag_y_raw =   Mag.raw_mag_data.raw_datax;
+      Mag_z_raw =   Mag.raw_mag_data.raw_dataz;
+
+      //USBSerial.printf("%f,%d,%d,%d\n\r",Elapsed_time ,Mag_x_raw, Mag_y_raw, Mag_z_raw);
+
+  double T,P;
+ 
+  if(result!=0){
+    delay(result);
+    result = Pressure.getTemperatureAndPressure(T,P);
+    
+      if(result!=0)
+      {
+        double A = Pressure.altitude(P,P0);
+        USBSerial.printf("%f %f %f %f %f\n\r",Elapsed_time, T, P, A, (float)dist/1000.0);
+        //USBSerial.print("T = \t");USBSerial.print(T,2); USBSerial.print(" degC\t");
+        //USBSerial.print("P = \t");USBSerial.print(P,2); USBSerial.print(" mBar\t");
+        //USBSerial.print("A = \t");USBSerial.print(A,2); USBSerial.println(" m");
+       
+      }
+      else {
+        USBSerial.println("Error.");
+      }
+  }
+  else {
+    USBSerial.println("Error.");
+  }
+  result = Pressure.startMeasurment();
+
+
+
+
     }
   }
   else
@@ -549,35 +597,3 @@ float sensor_read(void)
 
   return (et-st)*1.0e-6;
 }
-
-
-#if 0
-
-float range = 1.0f;
-
-float Roll_angle = 0.0f;
-float tht = 0.0f;
-float Yaw_angle = 0.0f;
-float sRoll_angle = sin(Roll_angle);
-float cRoll_angle = cos(Roll_angle);
-float stht = sin(tht);
-float ctht = cos(tht);
-float sYaw_angle = sin(Yaw_angle);
-float sYaw_angle = cos(Yaw_angle);
-
-float r11 =  ctht*cYaw_angle;
-float r12 =  sRoll_angle*stht*cYaw_angle - cRoll_angle*sYaw_angle;
-float r13 =  cRoll_angle*stht*cYaw_angle + sRoll_angle*sYaw_angle;
-
-float r21 =  ctht*sYaw_angle;
-float r22 =  sRoll_angle*stht*sYaw_angle + cRoll_angle*cYaw_angle;
-float r23 =  cRoll_angle*stht*sYaw_angle - sRoll_angle*cYaw_angle;
-
-float r31 = -stht;
-float r32 =  sRoll_angle*ctht;
-float r33 =  cRoll_angle*ctht;
-
-float x = r13*range;
-float y = r23*range;
-float z = r33*range;
-#endif

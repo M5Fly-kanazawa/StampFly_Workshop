@@ -379,13 +379,9 @@ float sensor_read(void)
   Pitch_rate_raw =   gyro_x;
   Yaw_rate_raw   = - gyro_z;
 
-  
-
-
-
-
   if(Mode > AVERAGE_MODE)
   {
+    //400Hz
     Accel_x    = raw_ax_filter.update(Accel_x_raw, Interval_time);
     Accel_y    = raw_ay_filter.update(Accel_y_raw , Interval_time);
     Accel_z    = raw_az_filter.update(Accel_z_raw , Interval_time);
@@ -395,83 +391,19 @@ float sensor_read(void)
     Pitch_rate = raw_gy_filter.update(Pitch_rate_raw - Pitch_rate_offset, Interval_time);
     Yaw_rate   = raw_gz_filter.update(Yaw_rate_raw - Yaw_rate_offset, Interval_time);
 
-    Drone_ahrs.updateIMU( (Pitch_rate)*(float)RAD_TO_DEG, 
-                          (Roll_rate)*(float)RAD_TO_DEG,
-                         -(Yaw_rate)*(float)RAD_TO_DEG,
-                            Accel_y, Accel_x, -Accel_z);
-    Roll_angle  =  Drone_ahrs.getPitch()*(float)DEG_TO_RAD;
-    Pitch_angle =  Drone_ahrs.getRoll()*(float)DEG_TO_RAD;
-    Yaw_angle   = -Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
+    Drone_ahrs.updateIMU( (Roll_rate)*(float)RAD_TO_DEG, 
+                          (Pitch_rate)*(float)RAD_TO_DEG,
+                          (Yaw_rate)*(float)RAD_TO_DEG,
+                          Accel_y, Accel_x, Accel_z);
 
-    //Get Altitude (30Hz)
+    Roll_angle  = Drone_ahrs.getRoll()*(float)DEG_TO_RAD;
+    Pitch_angle = Drone_ahrs.getPitch()*(float)DEG_TO_RAD;
+    Yaw_angle   = Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
     Az = az_filter.update(-Accel_z_d, sens_interval);
-    
-    if (dcnt>interval)
-    {
-      if(ToF_bottom_data_ready_flag)
-      {
-        dcnt=0u;
-        old_alt_time = alt_time;
-        alt_time = micros()*1.0e-6;
-        //h = alt_time - old_alt_time;
-        ToF_bottom_data_ready_flag = 0;
 
-        //距離の値の更新
-        //old_dist[0] = dist;
-        dist=tof_bottom_get_range();
-                
-        //外れ値処理
-        deff = dist - old_dist[1];
-        if ( deff > 500 )
-        {
-          dist = old_dist[1] + (old_dist[1] - old_dist[2])/2;
-        }
-        else if ( deff < -500 )
-        {
-          dist = old_dist[1] + (old_dist[1] - old_dist[3])/2;
-        }
-        else
-        {
-          old_dist[3] = old_dist[2];
-          old_dist[2] = old_dist[1];
-          old_dist[1] = dist;
-        }
-        alt_sensing_time = micros()*1.0e-6- alt_time;
-
-        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
-      }
-
-    
-    }
-    else dcnt++;
-
-    pos_time = micros()*1.0e-6;
-    Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
-    pos_interval = micros()*1.0e-6 - pos_time;
-
-    //Alt_control_ok = 1;
-    if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
-    else first_flag = 1;
-    Altitude2 = EstimatedAltitude.Altitude;
-    Alt_velocity = EstimatedAltitude.Velocity;
-    Az_bias = EstimatedAltitude.Bias;
-    //USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity, Az_bias);
-
-    //float Roll_angle = Roll_angle;
-    //float tht = Pitch_angle;
-    //float Yaw_angle = Yaw_angle;
-    //float sRoll_angle = sin(Roll_angle);
-    //float cRoll = cos(Roll_angle);
-  // float stht = sin(tht);
-    //float cPitch = cos(Pitch_angle);
-    //float sYaw_angle = sin(Yaw_angle);
-    //float sYaw_angle = cos(Yaw_angle);
-
-    //float r33 =  cRoll*cPitch;
-    //Altitude2 = r33 * Altitude;
-    //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
-
-    if (opt_interval > 0.01)
+  //100Hz
+  //Optical flow and Magnetic  
+  if (opt_interval > 0.01)
     {    
       readMotionCount(&deltaY, &deltaX);
       velocity_x = -(0.0254 * (float)deltaX * Altitude/11.914)/opt_interval;
@@ -539,61 +471,115 @@ float sensor_read(void)
 
       //USBSerial.printf("%f,%d,%d,%d\n\r",Elapsed_time ,Mag_x_raw, Mag_y_raw, Mag_z_raw);
 
-  double T,P;
+      double T,P;
  
-  if(result!=0){
-    delay(result);
-    result = Pressure.getTemperatureAndPressure(T,P);
-    
-      if(result!=0)
+      if(result!=0){
+        delay(result);
+        result = Pressure.getTemperatureAndPressure(T,P);
+        
+          if(result!=0)
+          {
+            double A = Pressure.altitude(P,P0);
+            USBSerial.printf("%f %f %f %f %f\n\r",Elapsed_time, T, P, A, (float)dist/1000.0);
+          }
+          else USBSerial.println("Error.");
+      }
+      else USBSerial.println("Error.");
+
+      result = Pressure.startMeasurment();
+    }
+    else opt_interval = 0.0;
+
+    //30Hz
+    //Get Altitude
+    if (dcnt>interval)
+    {
+      if(ToF_bottom_data_ready_flag)
       {
-        double A = Pressure.altitude(P,P0);
-        USBSerial.printf("%f %f %f %f %f\n\r",Elapsed_time, T, P, A, (float)dist/1000.0);
-        //USBSerial.print("T = \t");USBSerial.print(T,2); USBSerial.print(" degC\t");
-        //USBSerial.print("P = \t");USBSerial.print(P,2); USBSerial.print(" mBar\t");
-        //USBSerial.print("A = \t");USBSerial.print(A,2); USBSerial.println(" m");
-       
+        dcnt=0u;
+        old_alt_time = alt_time;
+        alt_time = micros()*1.0e-6;
+        //h = alt_time - old_alt_time;
+        ToF_bottom_data_ready_flag = 0;
+
+        //距離の値の更新
+        //old_dist[0] = dist;
+        dist=tof_bottom_get_range();
+                
+        //外れ値処理
+        deff = dist - old_dist[1];
+        if ( deff > 500 )
+        {
+          dist = old_dist[1] + (old_dist[1] - old_dist[2])/2;
+        }
+        else if ( deff < -500 )
+        {
+          dist = old_dist[1] + (old_dist[1] - old_dist[3])/2;
+        }
+        else
+        {
+          old_dist[3] = old_dist[2];
+          old_dist[2] = old_dist[1];
+          old_dist[1] = dist;
+        }
+        alt_sensing_time = micros()*1.0e-6- alt_time;
+
+        //USBSerial.printf("%9.6f, %9.6f, %9.6f, %9.6f, %9.6f\r\n",pos_interval*1000.0,Altitude/1000.0,  Altitude2, Alt_velocity,-(Accel_z_raw - Accel_z_offset)*9.81/(-Accel_z_offset));
       }
-      else {
-        USBSerial.println("Error.");
-      }
-  }
-  else {
-    USBSerial.println("Error.");
-  }
-  result = Pressure.startMeasurment();
+    }
+    else dcnt++;
+
+    pos_time = micros()*1.0e-6;
+    Altitude = alt_filter.update((float)dist/1000.0, Interval_time);
+    pos_interval = micros()*1.0e-6 - pos_time;
+
+    //Alt_control_ok = 1;
+    if(first_flag == 1) EstimatedAltitude.update(Altitude, Az, Interval_time);
+    else first_flag = 1;
+    Altitude2 = EstimatedAltitude.Altitude;
+    Alt_velocity = EstimatedAltitude.Velocity;
+    Az_bias = EstimatedAltitude.Bias;
 
 
 
+    //USBSerial.printf("Sens=%f Az=%f Altitude=%f Velocity=%f Bias=%f\n\r",Altitude, Az, Altitude2, Alt_velocity, Az_bias);
 
+    //float Roll_angle = Roll_angle;
+    //float tht = Pitch_angle;
+    //float Yaw_angle = Yaw_angle;
+    //float sRoll_angle = sin(Roll_angle);
+    //float cRoll = cos(Roll_angle);
+    // float stht = sin(tht);
+    //float cPitch = cos(Pitch_angle);
+    //float sYaw_angle = sin(Yaw_angle);
+    //float sYaw_angle = cos(Yaw_angle);
+
+    //float r33 =  cRoll*cPitch;
+    //Altitude2 = r33 * Altitude;
+    //EstimatedAltitude.update(Altitude2, r33*Accel_z_raw)
+
+    
+
+    //Accel fail safe
+    acc_norm = sqrt(Accel_x*Accel_x + Accel_y*Accel_y + Accel_z_d*Accel_z_d);
+    Acc_norm = acc_filter.update(acc_norm ,Control_period);
+    if (Acc_norm>2.0) 
+    {
+      OverG_flag = 1;
+      if (Over_g == 0.0)Over_g = acc_norm;
+    }
+
+    //Battery voltage check 
+    Voltage = ina3221.getVoltage(INA3221_CH2);
+    filterd_v = voltage_filter.update(Voltage, Control_period);
+
+    if(Under_voltage_flag != UNDER_VOLTAGE_COUNT){
+      if (filterd_v < POWER_LIMIT) Under_voltage_flag ++;
+      else Under_voltage_flag = 0;
+      if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
     }
   }
-  else
-  {
-    opt_interval = 0.0;
-  }
-
-  //Accel fail safe
-  acc_norm = sqrt(Accel_x*Accel_x + Accel_y*Accel_y + Accel_z_d*Accel_z_d);
-  Acc_norm = acc_filter.update(acc_norm ,Control_period);
-  if (Acc_norm>2.0) 
-  {
-    OverG_flag = 1;
-    if (Over_g == 0.0)Over_g = acc_norm;
-  }
-
-  //Battery voltage check 
-  Voltage = ina3221.getVoltage(INA3221_CH2);
-  filterd_v = voltage_filter.update(Voltage, Control_period);
-
-  if(Under_voltage_flag != UNDER_VOLTAGE_COUNT){
-    if (filterd_v < POWER_LIMIT) Under_voltage_flag ++;
-    else Under_voltage_flag = 0;
-    if ( Under_voltage_flag > UNDER_VOLTAGE_COUNT) Under_voltage_flag = UNDER_VOLTAGE_COUNT;
-  }
-  
   uint32_t et =micros();
   //USBSerial.printf("Sensor read %f %f %f\n\r", (mt-st)*1.0e-6, (et-mt)*1e-6, (et-st)*1.0e-6);
-
   return (et-st)*1.0e-6;
 }

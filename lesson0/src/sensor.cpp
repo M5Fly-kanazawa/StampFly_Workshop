@@ -2,7 +2,7 @@
 #include "imu.hpp"
 #include "tof.hpp" 
 #include "flight_control.hpp"
-#include "Bitcraze_PMW3901.h"
+//#include "Bitcraze_PMW3901.h"
 
 /************ BEEP ************/
 //BeepPWM出力Pinのアサイン
@@ -38,8 +38,7 @@ Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
 
-Bitcraze_PMW3901 flow(12);
-
+//Bitcraze_PMW3901 flow(12);
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -196,6 +195,7 @@ void sensor_init()
   }
 
   tof_init();
+  #if 0
   pinMode(12, OUTPUT);//CSを設定
   digitalWrite(12, 1);//CSをHIGH (SPI　~CS CS is active LOW)
   if (!flow.begin()) {
@@ -203,6 +203,7 @@ void sensor_init()
     while(1) { }
   }
   USBSerial.println("Initialization of the flow sensor Suceses!");
+  #endif
   imu_init();
   Drone_ahrs.begin(400.0);
   ina3221.begin(&Wire1);
@@ -267,6 +268,7 @@ void sensor_init()
 
   uint16_t flowcnt=0;
   
+  #if 0
   while(0)
   {
     // Get motion count since last call
@@ -281,6 +283,7 @@ void sensor_init()
     delay(10);
     flowcnt++;
   }
+  #endif
   
 }
 
@@ -358,6 +361,13 @@ float sensor_read(void)
     Roll_angle  =  Drone_ahrs.getPitch()*(float)DEG_TO_RAD;
     Pitch_angle =  Drone_ahrs.getRoll()*(float)DEG_TO_RAD;
     Yaw_angle   = -Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
+
+
+  //for debug
+  USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
+    Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
+
+
 
     //Get Altitude (30Hz)
     Az = az_filter.update(-Accel_z_d, sens_interval);

@@ -19,6 +19,8 @@
 #define RATECONTROL 1
 #define ANGLECONTROL_W_LOG 2
 #define RATECONTROL_W_LOG 3
+#define ALT_CONTROL_MODE 4
+#define NOT_ALT_CONTROL_MODE 5
 #define RESO10BIT (4096)
 
 
@@ -33,18 +35,19 @@ uint16_t Throttle_bias = 2048;
 short xstick=0;
 short ystick=0;
 uint8_t Mode=ANGLECONTROL;
+uint8_t AltMode=NOT_ALT_CONTROL_MODE;
 volatile uint8_t Loop_flag=0;
 float Timer = 0.0;
 float dTime = 0.01;
 uint8_t Timer_state = 0;
-uint8_t StickMode = 3;
+uint8_t StickMode = 2;
 uint32_t espnow_version;
 
 unsigned long stime,etime,dtime;
 byte axp_cnt=0;
 
 char data[140];
-uint8_t senddata[22];//19->22
+uint8_t senddata[23];//19->22
 uint8_t disp_counter=0;
 
 //StampFly MAC ADDRESS
@@ -268,8 +271,17 @@ void setup() {
   #endif
 
   joy_update();
-  StickMode = 3;
-  if(getOptionButton())StickMode = 2;
+
+  StickMode = 2;
+  if(getOptionButton())
+  {
+    StickMode = 3;
+    M5.Lcd.println("Please release button.");
+    while(getOptionButton())joy_update();
+  }
+  AltMode =NOT_ALT_CONTROL_MODE;
+  delay(500);
+
   if (StickMode == 3)
   {
     THROTTLE = RIGHTY;
@@ -340,7 +352,7 @@ void setup() {
   delay(100);
 }
 
-uint8_t check_mode_change(void)
+uint8_t check_control_mode_change(void)
 {
   uint8_t state;
   static uint8_t flag =0;
@@ -364,6 +376,32 @@ uint8_t check_mode_change(void)
   return state;
 }
 
+uint8_t check_alt_mode_change(void)
+{
+  uint8_t state;
+  static uint8_t flag =0;
+  state = 0;
+  if (flag==0)
+  {
+    if (getOptionButton() == 1)
+    {
+      flag = 1;
+    }
+  }
+  else
+  {
+    if (getOptionButton() == 0)
+    {
+      flag = 0;
+      state = 1;
+    }
+  }
+  //USBSerial.printf("%d %d\n\r", state, flag);
+  return state;
+}
+
+
+
 void loop() {
   uint16_t _throttle;// = getThrottle();
   uint16_t _phi;// = getAileron();
@@ -379,15 +417,11 @@ void loop() {
   M5.update();
   joy_update();
 
-  //Check Channel change  
+  //Stop Watch Start&Stop&Reset  
   if(M5.Btn.wasPressed()==true)
   {
     if (Timer_state == 0)Timer_state = 1;
     else if (Timer_state == 1)Timer_state = 0;
-
-    //Channel++;
-    //if (Channel==15)Channel=1;
-    //change_channel(Channel);
   }
 
   if(M5.Btn.pressedFor(400)==true)
@@ -407,10 +441,16 @@ void loop() {
     Timer_state = 0;
   }
 
-  if (check_mode_change() == 1)
+  if (check_control_mode_change() == 1)
   {
     if (Mode==ANGLECONTROL)Mode=RATECONTROL;
     else Mode = ANGLECONTROL;
+  }
+
+  if (check_alt_mode_change() == 1)
+  {
+    if (AltMode==ALT_CONTROL_MODE)AltMode=NOT_ALT_CONTROL_MODE;
+    else AltMode = ALT_CONTROL_MODE;
   }
 
   _throttle = getThrottle();
@@ -465,6 +505,8 @@ void loop() {
   senddata[19]=getArmButton();
   senddata[20]=getFlipButton();
   senddata[21]=Mode;
+  senddata[22]=AltMode;
+
   
   //送信
   esp_err_t result = esp_now_send(peerInfo.peer_addr, senddata, sizeof(senddata));
@@ -485,7 +527,7 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("MAC ADR %02X:%02X", peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
+      M5.Lcd.printf("MAC ADR %02X:%02X    ", peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
       break;
     case 1:
       M5.Lcd.printf("BAT 1:%4.1f 2:%4.1f", Battery_voltage[0],Battery_voltage[1]);
@@ -498,27 +540,24 @@ void loop() {
       #endif
       break;
     case 3:
-      M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
+      M5.Lcd.printf("CHL: %02d",peerInfo.channel);
       break;
     case 4:
-      M5.Lcd.printf("CHL: %02d",peerInfo.channel);
+      if( AltMode == ALT_CONTROL_MODE ) M5.Lcd.printf("-Auto ALT-  ");
+      else if ( AltMode == NOT_ALT_CONTROL_MODE )   M5.Lcd.printf("-Mnual ALT- ");
       break;
     case 5:
       if( Mode == ANGLECONTROL )      M5.Lcd.printf("-STABILIZE-");
       else if ( Mode == RATECONTROL ) M5.Lcd.printf("-ACRO-     ");
-      //M5.Lcd.printf("Phi:%5.1f",Phi*180/3.14159);
       break;
     case 6:
       M5.Lcd.printf("Time:%7.2f",Timer);
       break;
     case 7:
-      //M5.Lcd.printf("Psi:%5.1f",Psi*180/3.14159);
       break;
     case 8:
-      //M5.Lcd.printf("FPS:%5.1f",1000000.0/dtime);
       break;
     case 9:
-      //M5.Lcd.printf("Vlt:%3.1fV", Battery_voltage);
       break;
   }
   disp_counter++;

@@ -146,8 +146,7 @@ uint8_t BtnA_off_flag =1;
 volatile uint8_t Loop_flag = 0;
 volatile uint8_t Angle_control_flag = 0;
 uint8_t Stick_return_flag = 0;
-//uint32_t Led_color = 0x000000;
-//uint32_t Led_color2 = 255;
+uint8_t Throttle_control_mode = 0;
 
 //flip
 float FliRoll_rate_time = 2.0;
@@ -188,26 +187,15 @@ volatile float Alt_ref = 0.5;
 void init_pwm();
 void control_init();
 void variable_init(void);
-//void onboard_led(CRGB p, uint8_t state);
-//void esp_led(CRGB p, uint8_t state);
 void get_command(void);
 void angle_control(void);
 void rate_control(void);
 void output_data(void);
 void output_sensor_raw_data(void);
 void motor_stop(void);
-//void led_drive(void);
 uint8_t judge_mode_change(void);
 uint8_t get_arming_button(void);
 uint8_t get_flip_button(void);
-
-//void float2byte(float x, uint8_t* dst);
-//void append_data(uint8_t* data , uint8_t* newdata, uint8_t index, uint8_t len);
-//void data2log(uint8_t* data_list, float add_data, uint8_t index);
-//void telemetry(void);
-//void telemetry_sequence(void);
-//void make_telemetry_data(uint8_t* senddata);
-//void make_telemetry_header_data(uint8_t* senddata);
 
 //割り込み関数
 //Intrupt function
@@ -284,6 +272,7 @@ void loop_400Hz(void)
   sense_time = sensor_read();
   uint32_t cs_time = micros();
 
+
   //LED Drive
   led_drive();
   
@@ -349,10 +338,13 @@ void loop_400Hz(void)
     Alt_flag = 0;
     Alt_ref = Alt_ref_min;
     Stick_return_flag = 0;
+    Throttle_control_mode = 0;
     Thrust_filtered.reset();
     #endif
 
   }
+
+  //USBSerial.printf("%d\n\r", Mode);
 
   //Telemetry
   //telemetry400();
@@ -458,39 +450,17 @@ void control_init(void)
 ///////////////////////////////////////////////////////////////////
 
 
-float altitude_control(uint8_t reset_flag)
-{
-  /*
-  static float u =0.0f;
-  if (reset_flag == 1)
-  {
-    u = 0.0;
-    alt_pid.reset();
-    z_dot_pid.reset();
-  }
-  else if(Alt_control_ok == 1)
-  {
-    //Alt_control_ok = 0;
-    //float alt_err = Alt_ref - Altitude2;
-    //Z_dot_ref = alt_pid.update(alt_err, Control_period);
-    //float z_dot_err = Z_dot_ref - Alt_velocity;
-    //u = z_dot_pid.update(z_dot_err, Control_period);
-  }
-  return u;
-  */
-}
+float altitude_control(uint8_t reset_flag){}
 
-uint8_t Throttle_control_mode = 0;
 
 void get_command(void)
 {
-  Control_mode = Stick[CONTROLMODE];
-
   static uint16_t stick_count;
 
-  //if(OverG_flag == 1){
-  //  Thrust_command = 0.0;
-  //}
+  Control_mode = Stick[CONTROLMODE];
+  if ( (uint8_t)Stick[ALTCONTROLMODE] == 5)Throttle_control_mode = 0;
+  else if((uint8_t)Stick[ALTCONTROLMODE] == 5)Throttle_control_mode = 1;
+  else Throttle_control_mode = 0;
 
   //Thrust control
   float throttle_limit = 0.7;
@@ -580,8 +550,8 @@ void get_command(void)
     Flip_flag = get_flip_button();
   }
 
-  //USBSerial.printf("%5.2f %5.2f %5.2f %5.2f \n\r", 
-  //  Stick[THROTTLE], Stick[RUDDER], Stick[AILERON], Stick[ELEVATOR]);
+//  USBSerial.printf("%5.2f %5.2f %5.2f %5.2f \n\r", 
+//    Thrust_command, Roll_angle_command, Pitch_angle_command, Yaw_rate_reference);
 
 }
 
@@ -600,6 +570,10 @@ void rate_control(void)
       FrontLeft_motor_duty = 0.0;
       RearRight_motor_duty = 0.0;
       RearLeft_motor_duty = 0.0;
+      Duty_fr.reset();
+      Duty_fl.reset();
+      Duty_rr.reset();
+      Duty_rl.reset();
       motor_stop();
       p_pid.reset();
       q_pid.reset();
@@ -610,10 +584,28 @@ void rate_control(void)
       Pitch_rate_reference = 0.0f;
       Yaw_rate_reference = 0.0f;
       Rudder_center   = Yaw_angle_command;
+      //angle control value reset
+      Roll_rate_reference=0.0f;
+      Pitch_rate_reference=0.0f;
+      phi_pid.reset();
+      theta_pid.reset();
+      phi_pid.set_error(Roll_angle_reference);
+      theta_pid.set_error(Pitch_angle_reference);
+      Flip_flag = 0;
+      Flip_counter = 0;
+
+      /////////////////////////////////////
+      // 以下の処理で、角度制御が有効になった時に
+      // 急激な目標値が発生して機体が不安定になるのを防止する
+      //Aileron_center  = Roll_angle_command;
+      //Elevator_center = Pitch_angle_command;
+
+      Roll_angle_offset   = 0;
+      Pitch_angle_offset = 0;
+      /////////////////////////////////////
     }
     else
     {
-
       //Control angle velocity
       p_rate = Roll_rate;
       q_rate = Pitch_rate;
@@ -684,13 +676,51 @@ void rate_control(void)
         OverG_flag=0;
         Mode = PARKING_MODE;
       }
-      //USBSerial.printf("%12.5f %12.5f %12.5f %12.5f\n",FrontRight_motor_duty, FrontLeft_motor_duty, RearRight_motor_duty, RearLeft_motor_duty);
     }
   }
-  else{
-    motor_stop();    
-  } 
+  else
+  {
+    motor_stop();
+    FrontRight_motor_duty = 0.0;
+    FrontLeft_motor_duty = 0.0;
+    RearRight_motor_duty = 0.0;
+    RearLeft_motor_duty = 0.0;
+    Duty_fr.reset();
+    Duty_fl.reset();
+    Duty_rr.reset();
+    Duty_rl.reset();
+    motor_stop();
+    p_pid.reset();
+    q_pid.reset();
+    r_pid.reset();
+    alt_pid.reset();
+    z_dot_pid.reset();
+    Roll_rate_reference = 0.0f;
+    Pitch_rate_reference = 0.0f;
+    Yaw_rate_reference = 0.0f;
+    Rudder_center   = Yaw_angle_command;
+    //angle control value reset
+    Roll_rate_reference=0.0f;
+    Pitch_rate_reference=0.0f;
+    phi_pid.reset();
+    theta_pid.reset();
+    phi_pid.set_error(Roll_angle_reference);
+    theta_pid.set_error(Pitch_angle_reference);
+    Flip_flag = 0;
+    Flip_counter = 0;
+
+    /////////////////////////////////////
+    // 以下の処理で、角度制御が有効になった時に
+    // 急激な目標値が発生して機体が不安定になるのを防止する
+    //Aileron_center  = Roll_angle_command;
+    //Elevator_center = Pitch_angle_command;
+
+    Roll_angle_offset   = 0;
+    Pitch_angle_offset = 0;
+    /////////////////////////////////////
+  }
 }
+
 
 void angle_control(void)
 {
@@ -822,7 +852,7 @@ void angle_control(void)
       Roll_rate_reference = phi_pid.update(phi_err, Interval_time);
       Pitch_rate_reference = theta_pid.update(theta_err, Interval_time);
       if(Alt_flag==1)Z_dot_ref = alt_pid.update(alt_err, Interval_time);
-
+      
     } 
   }
 }

@@ -220,21 +220,19 @@ void init_copter(void)
  
   //Initialize Serial communication
   USBSerial.begin(115200);
-  delay(2000);
+  delay(1500);
   USBSerial.printf("Start StampS3FPV!\r\n");
   
   //Initialize PWM
   init_pwm();
   sensor_init();
   USBSerial.printf("Finish sensor init!\r\n");
-  //while(1);
 
   //PID GAIN and etc. Init
   control_init();
 
   //Initilize Radio control
   rc_init();
-
 
   //割り込み設定
   //Initialize intrupt
@@ -243,14 +241,7 @@ void init_copter(void)
   timerAlarmWrite(timer, 2500, true);
   timerAlarmEnable(timer);
   USBSerial.printf("Finish StampFly init!\r\n");
-
-  #ifdef TEST
-  USBSerial.printf("Start test mode!\r\n");
-  test_init();
-
-  #else
   USBSerial.printf("Enjoy Flight!\r\n");
-  #endif
 }
 
 //Main loop

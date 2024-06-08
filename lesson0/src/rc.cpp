@@ -134,11 +134,11 @@ void rc_init(void)
   esp_wifi_set_channel(CHANNEL, WIFI_SECOND_CHAN_NONE);
 
   //Send my MAC address
-  for (uint16_t i=0; i<50; i++)
+  for (uint16_t i=0; i<20; i++)
   {
     send_peer_info();
-    delay(10);
-    USBSerial.printf("%d\n", i);
+    delay(50);
+    //USBSerial.printf("%d\n", i);
   }
 
   // ESP-NOW再初期化

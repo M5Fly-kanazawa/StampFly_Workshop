@@ -195,15 +195,6 @@ void sensor_init()
   }
 
   tof_init();
-  #if 0
-  pinMode(12, OUTPUT);//CSを設定
-  digitalWrite(12, 1);//CSをHIGH (SPI　~CS CS is active LOW)
-  if (!flow.begin()) {
-    USBSerial.println("Initialization of the flow sensor failed");
-    while(1) { }
-  }
-  USBSerial.println("Initialization of the flow sensor Suceses!");
-  #endif
   imu_init();
   Drone_ahrs.begin(400.0);
   ina3221.begin(&Wire1);
@@ -211,7 +202,7 @@ void sensor_init()
   voltage_filter.set_parameter(0.005, 0.0025);
   
   uint16_t cnt=0;
-  while(cnt<10)
+  while(cnt<3)
   {
     if(ToF_bottom_data_ready_flag)
     {
@@ -220,13 +211,8 @@ void sensor_init()
       USBSerial.printf("%d %d\n\r", cnt, tof_bottom_get_range());
     }
   }
-  
-  //pipo();
-  delay(500);
-  //test_imu();
-  //termin();
-  //test_voltage();  
-
+  delay(10);
+ 
   //Acceleration filter
   acc_filter.set_parameter(0.005, 0.0025);
 
@@ -241,49 +227,6 @@ void sensor_init()
   raw_az_d_filter.set_parameter(0.1, 0.0025);//alt158
   az_filter.set_parameter(0.1, 0.0025);//alt158
   alt_filter.set_parameter(0.01, 0.0025);
-
-  /*//SoSo
-  acc_filter.set_parameter(0.005, 0.0025);
-  
-  raw_ax_filter.set_parameter(0.005, 0.0025);
-  raw_ay_filter.set_parameter(0.005, 0.0025);
-  raw_az_filter.set_parameter(0.005, 0.0025);
-  raw_az_d_filter.set_parameter(0.005, 0.0025);
-  
-  raw_gx_filter.set_parameter(0.002, 0.0025);
-  raw_gy_filter.set_parameter(0.002, 0.0025);
-  raw_gz_filter.set_parameter(0.002, 0.0025);
-  
-  az_filter.set_parameter(0.1, 0.0025);//Tau=0.01
-  alt_filter.set_parameter(0.01, 0.0025);
-  */
-
- /* 
-  if (!flow.begin()) {
-    USBSerial.println("Initialization of the flow sensor failed");
-    while(1) { }
-  }
-  USBSerial.println("Initialization of the flow sensor Suceses!");
-  */
-
-  uint16_t flowcnt=0;
-  
-  #if 0
-  while(0)
-  {
-    // Get motion count since last call
-    flow.readMotionCount(&deltaX, &deltaY);
-
-    USBSerial.print(flowcnt);
-    USBSerial.print(" X: ");
-    USBSerial.print(deltaX);
-    USBSerial.print(", Y: ");
-    USBSerial.print(deltaY);
-    USBSerial.print("\r\n");
-    delay(10);
-    flowcnt++;
-  }
-  #endif
   
 }
 

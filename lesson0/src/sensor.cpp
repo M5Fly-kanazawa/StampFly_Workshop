@@ -2,25 +2,6 @@
 #include "imu.hpp"
 #include "tof.hpp" 
 #include "flight_control.hpp"
-//#include "Bitcraze_PMW3901.h"
-
-/************ BEEP ************/
-//BeepPWM出力Pinのアサイン
-#define BEEP 40
-
-//モータPWM周波数 
-//Beep PWM Frequency [Hz]
-int32_t beep_freq = 330;
-
-//PWM分解能
-//PWM Resolution
-const int beep_resolution = 12;
-
-//モータチャンネルのアサイン
-//BEEP Channel
-const int beep_channel  = 7;
-/************ BEEP ************/
-
 
 Madgwick Drone_ahrs;
 Alt_kalman EstimatedAltitude;
@@ -37,8 +18,6 @@ Filter raw_gx_filter;
 Filter raw_gy_filter;
 Filter raw_gz_filter;
 Filter alt_filter;
-
-//Bitcraze_PMW3901 flow(12);
 
 //Sensor data
 volatile float Roll_angle=0.0f, Pitch_angle=0.0f, Yaw_angle=0.0f;
@@ -68,18 +47,6 @@ uint8_t OverG_flag = 0;
 volatile uint8_t Under_voltage_flag = 0;
 //volatile uint8_t ToF_bottom_data_ready_flag;
 volatile uint16_t Range=1000;
-
-void beep_init(void);
-
-
-void beep_init(void)
-{
-  #if 0
-  ledcSetup(beep_channel, (uint32_t)beep_freq, beep_resolution);
-  ledcAttachPin(BEEP, beep_channel);
-  ledcWrite(beep_channel, (uint32_t)(0));
-  #endif
-}
 
 uint8_t scan_i2c()
 {
@@ -122,51 +89,6 @@ void sensor_calc_offset_avarage(void)
   Accel_z_offset = (Offset_counter * Accel_z_offset + Accel_z_raw) / (Offset_counter + 1);
 
   Offset_counter++;
-}
-
-
-void pipo(void)
-{  
-  ledcChangeFrequency(beep_channel, 2000, beep_resolution);
-  ledcWrite(beep_channel, 127);
-  ets_delay_us(200000);
-  ledcWrite(beep_channel, 0);
-  ets_delay_us(5000);
-  ledcChangeFrequency(beep_channel, 1000, beep_resolution);
-  ledcWrite(beep_channel, 127);
-  ets_delay_us(200000);
-  ledcWrite(beep_channel, 0);
-}
-
-void termin(void)
-{
-  while(1)
-  {
-    if(ToF_bottom_data_ready_flag)
-    {
-      ToF_bottom_data_ready_flag = 0;
-      Range = tof_bottom_get_range();
-
-      //Change Beep freqency
-      beep_freq = ((int32_t)Range - 23)*5 + 100;
-      beep_freq = beep_freq>>2;
-      beep_freq = beep_freq<<2;
-      if(beep_freq>8000)beep_freq = 8000;
-
-      if(beep_freq<0)
-      {
-        ledcWrite(beep_channel, 0);
-      }
-      else if(beep_freq>50)
-      {
-        ledcChangeFrequency(beep_channel, (uint32_t)beep_freq, beep_resolution);
-        ledcWrite(beep_channel, 127);
-      }
-      //else ledcWrite(beep_channel, 127);
-
-      USBSerial.printf("%d %d\r\n", Range, beep_freq);
-    }
-  }
 }
 
 void test_voltage(void)

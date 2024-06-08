@@ -12,14 +12,20 @@ void imu_init(void)
   int8_t st;
   uint8_t data=0;
 
+
   USBSerial.printf("Start IMU Initialize!\n\r");
+  
   pinMode(46, OUTPUT);//CSを設定
   digitalWrite(46, 1);//CSをHIGH
-  delay(1);
-  bmi270_dev_init();  
+  pinMode(12, OUTPUT);//CSを設定
+  digitalWrite(12, 1);//CSをHIGH
+
+
+  delay(5);
   USBSerial.printf("SPI Initilize status:%d\n\r",spi_init());
-  
+
   //BMI270 Init
+  bmi270_dev_init();  
   st = bmi270_init(pBmi270);
   USBSerial.printf("#INIT Status:%d\n\r", st);
   if (st!=0)

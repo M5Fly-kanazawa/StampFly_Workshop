@@ -213,7 +213,7 @@ void init_copter(void)
 
   //Initialaze LED function
   led_init();
-  esp_led(RED, 1);
+  esp_led(0x110000, 1);
   onboard_led1(WHITE, 1);
   onboard_led2(WHITE, 1);
   led_show();
@@ -325,9 +325,6 @@ void loop_400Hz(void)
   }
   else if(Mode == PARKING_MODE)
   {
-    #ifdef TEST
-    test_main();
-    #else
     //Judge Mode change
     if( judge_mode_change() == 1)Mode = FLIGHT_MODE;
     
@@ -341,38 +338,18 @@ void loop_400Hz(void)
     Stick_return_flag = 0;
     Throttle_control_mode = 0;
     Thrust_filtered.reset();
-    #endif
-
   }
 
   //USBSerial.printf("%d\n\r", Mode);
 
   //Telemetry
   //telemetry400();
-  telemetry();
+  //telemetry();
 
   uint32_t ce_time = micros();
   //if(Telem_cnt == 1)Dt_time = D_time - E_time;
   Dt_time = ce_time - cs_time;
-
-  #ifdef DEBUG
-  USBSerial.printf("Loop time(ms) %5.3f %5.3f %5.3f %5.3f Range %6.1f\n\r", 
-    sense_time*1000.0, 
-    (ce_time - cs_time)*1.0e-3, 
-    (ce_time - cs_time)*1.0e-3 + sense_time*1000.0,
-    Interval_time*1000.0,
-    Altitude );
-  #endif
   
-  #if 0
-  //受信MACアドレス表示
-  USBSerial.printf("%02X:%02X:%02X:%02X:%02X:%02X:Rc_err_flag=%d\n",
-    Recv_MAC[0],MyMacAddr[3],
-    Recv_MAC[1],MyMacAddr[4],
-    Recv_MAC[2],MyMacAddr[5],
-    Rc_err_flag);
-  #endif
-
   //End of Loop_400Hz function
 }
 
@@ -400,9 +377,6 @@ uint8_t judge_mode_change(void)
   return state;
 }
 
-///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 //  PID control gain setting
 //
@@ -446,26 +420,20 @@ void control_init(void)
 
 }
 ///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////
-
-
-float altitude_control(uint8_t reset_flag){}
-
 
 void get_command(void)
 {
   static uint16_t stick_count;
+  float th,thlo;
+  float throttle_limit = 0.7;
 
   Control_mode = Stick[CONTROLMODE];
   if ( (uint8_t)Stick[ALTCONTROLMODE] == 5)Throttle_control_mode = 0;
-  else if((uint8_t)Stick[ALTCONTROLMODE] == 5)Throttle_control_mode = 1;
+  else if((uint8_t)Stick[ALTCONTROLMODE] == 4)Throttle_control_mode = 1;
   else Throttle_control_mode = 0;
 
   //Thrust control
-  float throttle_limit = 0.7;
-  float thlo = Stick[THROTTLE];
+  thlo = Stick[THROTTLE];
   thlo = thlo/throttle_limit;
 
   if (Throttle_control_mode == 0)
@@ -476,15 +444,12 @@ void get_command(void)
     if (thlo>1.0f) thlo = 1.0f;
     if (thlo<-1.0f) thlo =0.0f;
     //Throttle curve conversion　スロットルカーブ補正
-    //Thrust_command = (2.95f*thlo-4.8f*thlo*thlo+2.69f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
-    float th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
+    th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
     Thrust_command = Thrust_filtered.update(th, Interval_time);
   }
   else if (Throttle_control_mode == 1)
   {
     //Altitude Control
-    //Alt_ref = Alt_max;
-
     if(Alt_flag==0)
     {
       stick_count = 0;
@@ -493,7 +458,7 @@ void get_command(void)
       if ( (0.2 > thlo) && (thlo > -0.2) )thlo = 0.0f ;
       if (thlo>1.0f) thlo = 1.0f;
       if (thlo<-1.0f) thlo =0.0f;
-      float th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
+      th = (2.97f*thlo-4.94f*thlo*thlo+2.86f*thlo*thlo*thlo)*BATTERY_VOLTAGE;
       Thrust_command = Thrust_filtered.update(th, Interval_time);
       
       if (Altitude2 < Alt_ref) 
@@ -512,7 +477,7 @@ void get_command(void)
         {
           thlo = 0.0f ;//不感帯
           stick_count++;
-          if(stick_count>800)Stick_return_flag = 1;
+          if(stick_count>200)Stick_return_flag = 1;
         }
       }
       else
@@ -523,8 +488,6 @@ void get_command(void)
       }
     } 
   }
-
-  //Thrust_command = 0.45*BATTERY_VOLTAGE;
 
   Roll_angle_command = 0.4*Stick[AILERON];
   if (Roll_angle_command<-1.0f)Roll_angle_command = -1.0f;
@@ -550,10 +513,6 @@ void get_command(void)
   {
     Flip_flag = get_flip_button();
   }
-
-//  USBSerial.printf("%5.2f %5.2f %5.2f %5.2f \n\r", 
-//    Thrust_command, Roll_angle_command, Pitch_angle_command, Yaw_rate_reference);
-
 }
 
 void rate_control(void)
@@ -594,16 +553,8 @@ void rate_control(void)
       theta_pid.set_error(Pitch_angle_reference);
       Flip_flag = 0;
       Flip_counter = 0;
-
-      /////////////////////////////////////
-      // 以下の処理で、角度制御が有効になった時に
-      // 急激な目標値が発生して機体が不安定になるのを防止する
-      //Aileron_center  = Roll_angle_command;
-      //Elevator_center = Pitch_angle_command;
-
       Roll_angle_offset   = 0;
       Pitch_angle_offset = 0;
-      /////////////////////////////////////
     }
     else
     {
@@ -639,11 +590,6 @@ void rate_control(void)
       FrontLeft_motor_duty  = Duty_fl.update((Thrust_command +( Roll_rate_command +Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
       RearRight_motor_duty  = Duty_rr.update((Thrust_command +(-Roll_rate_command -Pitch_rate_command -Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
       RearLeft_motor_duty   = Duty_rl.update((Thrust_command +( Roll_rate_command -Pitch_rate_command +Yaw_rate_command)*0.25f)/BATTERY_VOLTAGE, Interval_time);
-
-      //FrontRight_motor_duty = Duty_fr.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
-      //FrontLeft_motor_duty  = Duty_fl.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
-      //RearRight_motor_duty  = Duty_rr.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
-      //RearLeft_motor_duty   = Duty_rl.update((Thrust_command)/BATTERY_VOLTAGE, Control_period);
     
       const float minimum_duty=0.0f;
       const float maximum_duty=0.95f;
@@ -709,16 +655,8 @@ void rate_control(void)
     theta_pid.set_error(Pitch_angle_reference);
     Flip_flag = 0;
     Flip_counter = 0;
-
-    /////////////////////////////////////
-    // 以下の処理で、角度制御が有効になった時に
-    // 急激な目標値が発生して機体が不安定になるのを防止する
-    //Aileron_center  = Roll_angle_command;
-    //Elevator_center = Pitch_angle_command;
-
     Roll_angle_offset   = 0;
     Pitch_angle_offset = 0;
-    /////////////////////////////////////
   }
 }
 
@@ -847,9 +785,8 @@ void angle_control(void)
       phi_err   = Roll_angle_reference   - (Roll_angle - Roll_angle_offset );
       theta_err = Pitch_angle_reference - (Pitch_angle - Pitch_angle_offset);
       alt_err = Alt_ref - Altitude2;
-      //Z_dot_ref = alt_pid.update(alt_err, Interval_time);
 
-      //PID
+      //Altitude COntrol PID
       Roll_rate_reference = phi_pid.update(phi_err, Interval_time);
       Pitch_rate_reference = theta_pid.update(theta_err, Interval_time);
       if(Alt_flag==1)Z_dot_ref = alt_pid.update(alt_err, Interval_time);
@@ -873,17 +810,6 @@ void init_pwm(void)
   ledcAttachPin(pwmFrontRight, FrontRight_motor);
   ledcAttachPin(pwmRearLeft, RearLeft_motor);
   ledcAttachPin(pwmRearRight, RearRight_motor);
-  
-  #if 0
-  //motor test
-  for (uint8_t i=0; i<4; i++)
-  {
-    ledcWrite(i, 30);
-    delay(800);
-    ledcWrite(i, 0);
-    delay(500);
-  }
-  #endif
 }
 
 
@@ -909,7 +835,6 @@ uint8_t get_arming_button(void)
     }
     
   }
-  //USBSerial.println(state);
   return state;
 }
 
@@ -935,7 +860,6 @@ uint8_t get_flip_button(void)
     }
     
   }
-  //USBSerial.println(state);
   return state;
 }
 

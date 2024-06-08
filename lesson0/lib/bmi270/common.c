@@ -177,6 +177,8 @@ spi_device_interface_config_t devcfg = {
 
 esp_err_t spi_init(void)
 {
+
+
     //Initialize the SPI bus
     esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
     if(ret != ESP_OK) return ret;

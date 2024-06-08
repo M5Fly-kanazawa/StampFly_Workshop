@@ -76,12 +76,8 @@ void led_drive(void)
     }
   }
 
-  //Watch dog LED
-  //if ( Dt_time>2550u )onboard_led(RED, 1);
-
   //LED show
   FastLED.show();
-  //USBSerial.printf("Time delta %f\n\r", (Elapsed_time - Old_Elapsed_time) );
 }
 
 void onboard_led1(CRGB p, uint8_t state)
@@ -112,7 +108,5 @@ void esp_led(CRGB p, uint8_t state)
 {
   if (state ==1) led_esp[0]=p;
   else led_esp[0]=0;
-   //Update LED
-  //FastLED.show();
   return;
 }

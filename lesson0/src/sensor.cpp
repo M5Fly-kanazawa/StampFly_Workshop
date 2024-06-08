@@ -363,11 +363,9 @@ float sensor_read(void)
     Yaw_angle   = -Drone_ahrs.getYaw()*(float)DEG_TO_RAD;
 
 
-  //for debug
-  USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
-    Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
-
-
+    //for debug
+    //USBSerial.printf("%6.3f %7.4f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f\n\r", 
+    //  Elapsed_time, Interval_time, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
 
     //Get Altitude (30Hz)
     Az = az_filter.update(-Accel_z_d, sens_interval);

@@ -225,15 +225,16 @@ void init_copter(void)
   
   //Initialize PWM
   init_pwm();
-
-  //Initilize Radio control
-  rc_init();
   sensor_init();
-
   USBSerial.printf("Finish sensor init!\r\n");
   //while(1);
 
+  //PID GAIN and etc. Init
   control_init();
+
+  //Initilize Radio control
+  rc_init();
+
 
   //割り込み設定
   //Initialize intrupt

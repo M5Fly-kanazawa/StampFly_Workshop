@@ -11,6 +11,10 @@
 #define PERPLE 0xff00ff
 #define POWEROFFCOLOR 0x18EBF9
 
+#define PIN_LED_ONBORD 39
+#define PIN_LED_ESP    21
+#define NUM_LEDS   1
+
 extern uint32_t Led_color;
 extern uint32_t Led_color2;
 extern uint32_t Led_color3;

@@ -23,19 +23,24 @@
  * SOFTWARE.
  */
 
+#ifndef IMU_HPP
+#define IMU_HPP
+
 #include <Arduino.h>
-#include <FastLED.h>
-#include "flight_control.hpp"
+#include "common.h"
+#include "bmi2.h"
 
-// VL53L0X_ADDRESS           0x29
-// MPU6886_ADDRESS           0x68
-// BMP280_ADDRESS            0x76
+#define DPS20002RAD 34.90658504
+#define DPS10002RAD 17.4532925199
 
-void setup() {
-    init_copter();
-    delay(100);
-}
+void imu_init(void);
+void imu_test(void);
+void imu_update(void);
+float imu_get_acc_x(void);
+float imu_get_acc_y(void);
+float imu_get_acc_z(void);
+float imu_get_gyro_x(void);
+float imu_get_gyro_y(void);
+float imu_get_gyro_z(void);
 
-void loop() {
-    loop_400Hz();
-}
+#endif

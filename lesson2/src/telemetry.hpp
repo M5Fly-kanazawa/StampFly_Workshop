@@ -23,19 +23,12 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
-#include <FastLED.h>
-#include "flight_control.hpp"
+#ifndef TELEMETRY_HPP
+#define TELEMETRY_HPP
 
-// VL53L0X_ADDRESS           0x29
-// MPU6886_ADDRESS           0x68
-// BMP280_ADDRESS            0x76
+#include <stdint.h>
 
-void setup() {
-    init_copter();
-    delay(100);
-}
+void telemetry(void);
+void telemetry_fast(void);
 
-void loop() {
-    loop_400Hz();
-}
+#endif

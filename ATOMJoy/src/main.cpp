@@ -1,3 +1,28 @@
+/*
+* MIT License
+* 
+* Copyright (c) 2024 Kouhei Ito
+* 
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+* 
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
+
 //Controller for M5Fly
 //#define DEBUG
 
@@ -11,7 +36,7 @@
 #include <atoms3joy.h>
 #include <FS.h>
 #include <SPIFFS.h>
-
+#include "buzzer.h"
 
 #define CHANNEL 1
 
@@ -19,6 +44,8 @@
 #define RATECONTROL 1
 #define ANGLECONTROL_W_LOG 2
 #define RATECONTROL_W_LOG 3
+#define ALT_CONTROL_MODE 4
+#define NOT_ALT_CONTROL_MODE 5
 #define RESO10BIT (4096)
 
 
@@ -33,18 +60,18 @@ uint16_t Throttle_bias = 2048;
 short xstick=0;
 short ystick=0;
 uint8_t Mode=ANGLECONTROL;
+uint8_t AltMode=NOT_ALT_CONTROL_MODE;
 volatile uint8_t Loop_flag=0;
 float Timer = 0.0;
 float dTime = 0.01;
 uint8_t Timer_state = 0;
-uint8_t StickMode = 3;
+uint8_t StickMode = 2;
 uint32_t espnow_version;
-
+volatile uint8_t proactive_flag          = 0;
 unsigned long stime,etime,dtime;
-byte axp_cnt=0;
-
-char data[140];
-uint8_t senddata[22];//19->22
+uint8_t axp_cnt=0;
+uint8_t is_peering=0;
+uint8_t senddata[25];//19->22->23->24->25
 uint8_t disp_counter=0;
 
 //StampFly MAC ADDRESS
@@ -67,15 +94,43 @@ void voltage_print(void);
 // 受信コールバック
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *recv_data, int data_len) 
 {
-  Received_flag = 1;
-  Channel = recv_data[0];
-  Addr2[0] = recv_data[1];
-  Addr2[1] = recv_data[2];
-  Addr2[2] = recv_data[3];
-  Addr2[3] = recv_data[4];
-  Addr2[4] = recv_data[5];
-  Addr2[5] = recv_data[6];
-  USBSerial.printf("Receive !\n");
+  if (is_peering) {
+    if (recv_data[7] == 0xaa && recv_data[8] == 0x55 && recv_data[9] == 0x16 && recv_data[10] == 0x88) {
+        Received_flag = 1;
+        Channel       = recv_data[0];
+        Addr2[0]      = recv_data[1];
+        Addr2[1]      = recv_data[2];
+        Addr2[2]      = recv_data[3];
+        Addr2[3]      = recv_data[4];
+        Addr2[4]      = recv_data[5];
+        Addr2[5]      = recv_data[6];
+        USBSerial.printf("Receive !\n");
+    }
+  }
+  else {
+    //データ受信時に実行したい内容をここに書く。
+    float a;
+    uint8_t *dummy;
+    uint8_t offset = 2;
+
+    //Channel_detected_flag++;
+    //if(Channel_detected_flag>10)Channel_detected_flag=10;
+    //Serial.printf("Channel=%d  ",Channel);
+    dummy=(uint8_t*)&a;
+    dummy[0]=recv_data[0];
+    dummy[1]=recv_data[1];
+    if (dummy[0]==0xF4)return;
+    if ((dummy[0]==99)&&(dummy[1]==99))Serial.printf("#PID Gain P Ti Td Eta ");
+    for (uint8_t i=0; i<((data_len-offset)/4); i++)
+    {
+      dummy[0]=recv_data[i*4 + 0 + offset];
+      dummy[1]=recv_data[i*4 + 1 + offset];
+      dummy[2]=recv_data[i*4 + 2 + offset];
+      dummy[3]=recv_data[i*4 + 3 + offset];
+      USBSerial.printf("%9.4f ", a);
+    }
+    USBSerial.printf("\r\n");
+  }
 }
 
 #define BUF_SIZE 128
@@ -140,31 +195,33 @@ void load_data(void)
 
 void rc_init(uint8_t ch, uint8_t* addr)
 {  
-  // ESP-NOW初期化
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  if (esp_now_init() == ESP_OK) {
-    USBSerial.println("ESPNow Init Success");
-  } else {
-    USBSerial.println("ESPNow Init Failed");
-    ESP.restart();
-  }
+    // ESP-NOW初期化
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    if (esp_now_init() == ESP_OK) {
+        esp_now_unregister_recv_cb();
+        esp_now_register_recv_cb(OnDataRecv);
+        USBSerial.println("ESPNow Init Success");
+    } else {
+        USBSerial.println("ESPNow Init Failed");
+        ESP.restart();
+    }
 
-  memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, addr, 6);
-  peerInfo.channel = ch;
-  peerInfo.encrypt = false;
-  uint8_t peer_mac_addre;
-  while (esp_now_add_peer(&peerInfo) != ESP_OK) 
-  {
+    memset(&peerInfo, 0, sizeof(peerInfo));
+    memcpy(peerInfo.peer_addr, addr, 6);
+    peerInfo.channel = ch;
+    peerInfo.encrypt = false;
+    uint8_t peer_mac_addre;
+    while (esp_now_add_peer(&peerInfo) != ESP_OK) {
         USBSerial.println("Failed to add peer");
-  }  
-  esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+    }
+    esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
 }
 
 void peering(void)
 {
   uint8_t break_flag;
+  uint32_t beep_delay = 0;
   //StampFlyはMACアドレスをFF:FF:FF:FF:FF:FFとして
   //StampFlyのMACアドレスをでブロードキャストする
   //その際にChannelが機体と送信機で同一でない場合は受け取れない
@@ -197,14 +254,19 @@ void peering(void)
           }
           usleep(100);
     }
+    if (millis() - beep_delay >= 500) {
+        beep();
+        beep_delay = millis();
+    }
+
     if (break_flag)break;
     Ch_counter++;
     if(Ch_counter==15)Ch_counter=1;
   }
-  Channel = Ch_counter;
+  //Channel = Ch_counter;
 
   save_data();
-
+  is_peering = 0;
   USBSerial.printf("Channel:%02d\n\r", Channel);
   USBSerial.printf("MAC2:%02X:%02X:%02X:%02X:%02X:%02X:\n\r",
                     Addr2[0],Addr2[1],Addr2[2],Addr2[3],Addr2[4],Addr2[5]);
@@ -249,27 +311,45 @@ void setup() {
   M5.begin();
   Wire1.begin(38, 39, 400*1000);
   load_data();
-  M5.update();  
+  M5.update();
+  setup_pwm_buzzer();
   M5.Lcd.setRotation( 2 );
   M5.Lcd.setTextFont(2);
   M5.Lcd.setCursor(4, 2);
   
-  if(M5.Btn.isPressed())
-  {
+  if (M5.Btn.isPressed() || (Addr2[0] == 0xFF && Addr2[1] == 0xFF && Addr2[2] == 0xFF && Addr2[3] == 0xFF &&
+                               Addr2[4] == 0xFF && Addr2[5] == 0xFF)) {
+    M5.Lcd.println("Push LCD panel!");
+    while (1) {
+      M5.update();
+      if (M5.Btn.wasPressed()) {
+        is_peering = 1;
+        break;
+      }
+    }
     rc_init(1, Addr1);
     USBSerial.printf("Button pressed!\n\r");
-    M5.Lcd.println("Peering...");
+    M5.Lcd.println(" ");
+    M5.Lcd.println("Push StampFly");
+    M5.Lcd.println("    Reset Button!");
+    M5.Lcd.println(" ");
+    M5.Lcd.println("Pairing...");
     peering();
   }
-  #ifdef DEBUG
-  else rc_init(Channel, Addr1);
-  #else
   else rc_init(Channel, Addr2);
-  #endif
-
+  M5.Lcd.fillScreen(BLACK);
   joy_update();
-  StickMode = 3;
-  if(getOptionButton())StickMode = 2;
+
+  StickMode = 2;
+  if(getOptionButton())
+  {
+    StickMode = 3;
+    M5.Lcd.println("Please release button.");
+    while(getOptionButton())joy_update();
+  }
+  AltMode =NOT_ALT_CONTROL_MODE;
+  delay(500);
+
   if (StickMode == 3)
   {
     THROTTLE = RIGHTY;
@@ -329,7 +409,7 @@ void setup() {
     USBSerial.println("done\n");
 
   esp_now_get_version(&espnow_version);
-  USBSerial.printf("Version %d\n", espnow_version);
+  USBSerial.printf("ESP-NOW Version %d\n", espnow_version);
 
 
   //割り込み設定
@@ -340,7 +420,7 @@ void setup() {
   delay(100);
 }
 
-uint8_t check_mode_change(void)
+uint8_t check_control_mode_change(void)
 {
   uint8_t state;
   static uint8_t flag =0;
@@ -364,6 +444,32 @@ uint8_t check_mode_change(void)
   return state;
 }
 
+uint8_t check_alt_mode_change(void)
+{
+  uint8_t state;
+  static uint8_t flag =0;
+  state = 0;
+  if (flag==0)
+  {
+    if (getOptionButton() == 1)
+    {
+      flag = 1;
+    }
+  }
+  else
+  {
+    if (getOptionButton() == 0)
+    {
+      flag = 0;
+      state = 1;
+    }
+  }
+  //USBSerial.printf("%d %d\n\r", state, flag);
+  return state;
+}
+
+
+
 void loop() {
   uint16_t _throttle;// = getThrottle();
   uint16_t _phi;// = getAileron();
@@ -379,15 +485,11 @@ void loop() {
   M5.update();
   joy_update();
 
-  //Check Channel change  
+  //Stop Watch Start&Stop&Reset  
   if(M5.Btn.wasPressed()==true)
   {
     if (Timer_state == 0)Timer_state = 1;
     else if (Timer_state == 1)Timer_state = 0;
-
-    //Channel++;
-    //if (Channel==15)Channel=1;
-    //change_channel(Channel);
   }
 
   if(M5.Btn.pressedFor(400)==true)
@@ -407,16 +509,23 @@ void loop() {
     Timer_state = 0;
   }
 
-  if (check_mode_change() == 1)
+  if (check_control_mode_change() == 1)
   {
     if (Mode==ANGLECONTROL)Mode=RATECONTROL;
     else Mode = ANGLECONTROL;
+  }
+
+  if (check_alt_mode_change() == 1)
+  {
+    if (AltMode==ALT_CONTROL_MODE)AltMode=NOT_ALT_CONTROL_MODE;
+    else AltMode = ALT_CONTROL_MODE;
   }
 
   _throttle = getThrottle();
   _phi = getAileron();
   _theta = getElevator();
   _psi = getRudder();
+
 
   if(getArmButton()==1)
   {
@@ -426,10 +535,20 @@ void loop() {
     Psi_bias = _psi;
   }
 
+  //量産版
+  Throttle = -(float)(_throttle - Throttle_bias)/(float)(RESO10BIT*0.5);
+  Phi =       (float)(_phi - Phi_bias)/(float)(RESO10BIT*0.5); 
+  Theta =     (float)(_theta - Theta_bias)/(float)(RESO10BIT*0.5);
+  Psi =       (float)(_psi - Psi_bias)/(float)(RESO10BIT*0.5);
+
+  //最終試作版
+  #if 0
   Throttle = (float)(_throttle - Throttle_bias)/(float)(RESO10BIT*0.5);
-  Phi = (float)(_phi - Phi_bias)/(float)(RESO10BIT*0.5);
-  Theta = -(float)(_theta - Theta_bias)/(float)(RESO10BIT*0.5);
-  Psi = (float)(_psi - Psi_bias)/(float)(RESO10BIT*0.5);
+  Phi =      (float)(_phi - Phi_bias)/(float)(RESO10BIT*0.5); 
+  Theta =   -(float)(_theta - Theta_bias)/(float)(RESO10BIT*0.5);
+  Psi =      (float)(_psi - Psi_bias)/(float)(RESO10BIT*0.5);
+  #endif
+
 
   uint8_t* d_int;
   
@@ -465,6 +584,12 @@ void loop() {
   senddata[19]=getArmButton();
   senddata[20]=getFlipButton();
   senddata[21]=Mode;
+  senddata[22]=AltMode;
+  senddata[23]=proactive_flag;
+  
+  //checksum
+  senddata[24]=0;
+  for(uint8_t i=0;i<24;i++)senddata[24]=senddata[24]+senddata[i];
   
   //送信
   esp_err_t result = esp_now_send(peerInfo.peer_addr, senddata, sizeof(senddata));
@@ -485,7 +610,7 @@ void loop() {
   switch (disp_counter)
   {
     case 0:
-      M5.Lcd.printf("MAC ADR %02X:%02X", peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
+      M5.Lcd.printf("MAC ADR %02X:%02X    ", peerInfo.peer_addr[4],peerInfo.peer_addr[5]);
       break;
     case 1:
       M5.Lcd.printf("BAT 1:%4.1f 2:%4.1f", Battery_voltage[0],Battery_voltage[1]);
@@ -498,27 +623,24 @@ void loop() {
       #endif
       break;
     case 3:
-      M5.Lcd.printf("FPS: %5.1f",1000000.0/dtime);
+      M5.Lcd.printf("CHL: %02d",peerInfo.channel);
       break;
     case 4:
-      M5.Lcd.printf("CHL: %02d",peerInfo.channel);
+      if( AltMode == ALT_CONTROL_MODE ) M5.Lcd.printf("-Auto ALT-  ");
+      else if ( AltMode == NOT_ALT_CONTROL_MODE )   M5.Lcd.printf("-Mnual ALT- ");
       break;
     case 5:
       if( Mode == ANGLECONTROL )      M5.Lcd.printf("-STABILIZE-");
       else if ( Mode == RATECONTROL ) M5.Lcd.printf("-ACRO-     ");
-      //M5.Lcd.printf("Phi:%5.1f",Phi*180/3.14159);
       break;
     case 6:
       M5.Lcd.printf("Time:%7.2f",Timer);
       break;
     case 7:
-      //M5.Lcd.printf("Psi:%5.1f",Psi*180/3.14159);
       break;
     case 8:
-      //M5.Lcd.printf("FPS:%5.1f",1000000.0/dtime);
       break;
     case 9:
-      //M5.Lcd.printf("Vlt:%3.1fV", Battery_voltage);
       break;
   }
   disp_counter++;

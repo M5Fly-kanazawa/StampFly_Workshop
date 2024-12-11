@@ -166,7 +166,7 @@ spi_device_interface_config_t devcfg = {
     .duty_cycle_pos = 128,  // default 128 = 50%/50% duty
     .cs_ena_pretrans = 0, // 0 not used
     .cs_ena_posttrans = 0,  // 0 not used
-    .clock_speed_hz = SPI_MASTER_FREQ_9M,// 8,9,10,11,13,16,20,26,40,80
+    .clock_speed_hz = SPI_MASTER_FREQ_8M,// 8,9,10,11,13,16,20,26,40,80
     .spics_io_num = 46,
     .flags = 0,  // 0 not used
     .queue_size = 10,// transactionのキュー数。1以上の値を入れておく。
@@ -177,6 +177,8 @@ spi_device_interface_config_t devcfg = {
 
 esp_err_t spi_init(void)
 {
+
+
     //Initialize the SPI bus
     esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
     if(ret != ESP_OK) return ret;

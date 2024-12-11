@@ -1,3 +1,27 @@
+/*
+* MIT License
+* 
+* Copyright (c) 2024 Kouhei Ito
+* 
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+* 
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
 #include <atoms3joy.h>
 #include <Wire.h>
 
@@ -57,13 +81,29 @@ float getBatteryVoltage(uint8_t addr)
     #endif
 }
 
-
+uint16_t Stick_max[4]={0,0,0,0},Stick_min[4]={0xffff,0xffff,0xffff,0xffff};
+void get_max(uint8_t index){
+    if (stick[index]>Stick_max[index])Stick_max[index]=stick[index];
+}
+void get_min(uint8_t index){
+    if (stick[index]<Stick_min[index])Stick_min[index]=stick[index];
+}
+uint8_t First_flag=51;
 void joy_update(void)
 {
     stick[RIGHTX] = read_2byte_data(RIGHT_STICK_X_ADDRESS);
     stick[RIGHTY] = read_2byte_data(RIGHT_STICK_Y_ADDRESS);
     stick[LEFTX] = read_2byte_data(LEFT_STICK_X_ADDRESS);
     stick[LEFTY] = read_2byte_data(LEFT_STICK_Y_ADDRESS);
+    if (First_flag>50){
+        First_flag = 51;
+        for (uint8_t i=0;i<4;i++){
+            get_max(i);
+            get_min(i);
+        }    
+    }
+    else First_flag++;
+
     for (uint8_t i=0; i<4; i++)
     {
         button_old_state[i]=button_state[i];
@@ -97,11 +137,19 @@ void joy_update(void)
     Battery_voltage[1] = getBatteryVoltage(BATTERY_VOLTAGE2);
     #endif
     #if 0
-    USBSerial.printf("%4d %4d %4d %4d %3d %3d %3d %3d\n\r", 
+    USBSerial.printf("RX%4d RY%4d LX%4d LY%4d RXMIN%4d RXMAX%4d RYMIN%4d RYMAX%4d LXMIN%4d LXMAX%4d LYMIN%4d LYMAX%4d %3d %3d %3d %3d\n\r", 
                                             stick[RIGHTX],
                                             stick[RIGHTY],
                                             stick[LEFTX],
                                             stick[LEFTY],
+                                            Stick_min[RIGHTX],
+                                            Stick_max[RIGHTX],
+                                            Stick_min[RIGHTY],
+                                            Stick_max[RIGHTY],
+                                            Stick_min[LEFTX],
+                                            Stick_max[LEFTX],
+                                            Stick_min[LEFTY],
+                                            Stick_max[LEFTY],
                                             button[RIGHT_STICK_BUTTON],
                                             button[LEFT_STICK_BUTTON],
                                             button[RIGHT_BUTTON],

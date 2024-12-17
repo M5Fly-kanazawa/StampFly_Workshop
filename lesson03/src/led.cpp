@@ -32,6 +32,7 @@ uint32_t Led_color       = 0x000000;
 uint32_t Led_color2      = 255;
 uint32_t Led_color3      = 0x000000;
 uint16_t LedBlinkCounter = 0;
+uint16_t LED_counter     = 0;
 CRGB led_esp[1];
 CRGB led_onboard[2];
 
@@ -49,6 +50,43 @@ void led_init(void) {
 void led_show(void) {
     FastLED.show(32);
 }
+
+void board_tail_led(CRGB color, uint8_t state)
+{
+    if(state!=0) led_onboard[TAIL_LED] = color;
+    else led_onboard[TAIL_LED] = 0x000000;
+}
+
+void board_bottom_led(CRGB color, uint8_t state)
+{
+    if(state!=0) led_onboard[BOTTOM_LED] = color;
+    else led_onboard[BOTTOM_LED] = 0x000000;
+}
+
+void stamp_led(CRGB color, uint8_t state)
+{
+    if(state!=0) led_esp[0] = color;
+    else led_esp[0] = 0x000000;
+}
+
+/*********************************************/
+void blink_led(void)
+{
+    //以下のコードを変更する
+    LED_counter++;
+    if (LED_counter<400){
+        board_bottom_led(RED, 1);
+        board_tail_led(RED, 1);
+        stamp_led(RED, 1);
+    }
+    else if(LED_counter <800){
+        board_bottom_led(RED, 0);
+        board_tail_led(RED, 0);
+        stamp_led(RED, 0);
+    }
+    else LED_counter = 0;       
+}
+/*********************************************/
 
 void led_drive(void) {
     if (Mode == AVERAGE_MODE) {

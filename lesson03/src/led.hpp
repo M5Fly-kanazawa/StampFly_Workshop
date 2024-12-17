@@ -41,6 +41,8 @@
 #define PIN_LED_ONBORD 39
 #define PIN_LED_ESP    21
 #define NUM_LEDS       1
+#define TAIL_LED 0
+#define BOTTOM_LED 1
 
 extern uint32_t Led_color;
 
@@ -50,5 +52,9 @@ void led_drive(void);
 void onboard_led1(CRGB p, uint8_t state);
 void onboard_led2(CRGB p, uint8_t state);
 void esp_led(CRGB p, uint8_t state);
+void board_tail_led(CRGB color, uint8_t state);
+void board_bottom_led(CRGB color, uint8_t state);
+void stamp_led(CRGB color, uint8_t state);
+void blink_led(void);
 
 #endif

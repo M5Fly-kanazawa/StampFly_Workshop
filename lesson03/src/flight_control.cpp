@@ -296,32 +296,17 @@ void loop_400Hz(void) {
 
     //Start of Loop_400Hz function
     //以下に記述したコードが400Hzで繰り返される
-    
-    //Motorが2秒動いて止まるデモ
-    if (Loop_counter < 800)
-    {
-        //Start motor
-        set_duty_fl(0.15);
-        set_duty_fr(0.15);
-        set_duty_rl(0.15);
-        set_duty_rr(0.15);
-    }
-    else
-    {
-        //スロットルレーバーでモータの回転が変わるようにする
-        motor_stop();
-        
-    }
-    
+    blink_led();
+  
     Loop_counter ++ ;
 
-    //送信機からの受信データを確認する
-    if(Loop_counter%40==0) 
-        USBSerial.printf("%6d %6.3f %6.3f\n\r", 
-        Loop_counter, 
-        Stick[THROTTLE], 
-        Stick[ELEVATOR]);
-    
+    //1秒ごとにLoop_counterの値を端末に表示
+    if(Loop_counter%400==0) 
+        USBSerial.printf("%6d\n\r", Loop_counter);
+  
+    FastLED.show(64);
+
+
     //End of Loop_400Hz function
 }
 

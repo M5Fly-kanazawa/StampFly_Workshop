@@ -23,19 +23,23 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
-#include <FastLED.h>
-#include "flight_control.hpp"
+#ifndef TOF_HPP
+#define TOF_HPP
 
-// VL53L0X_ADDRESS           0x29
-// MPU6886_ADDRESS           0x68
-// BMP280_ADDRESS            0x76
+#include <stdint.h>
+#include <vl53lx_api.h>
+#include <vl53lx_platform.h>
 
-void setup() {
-    init_copter();
-    delay(100);
-}
+#define INT_BOTTOM   6
+#define XSHUT_BOTTOM 7
+#define INT_FRONT    8
+#define XSHUT_FRONT  9
+#define USER_A       0
 
-void loop() {
-    loop_400Hz();
-}
+void tof_init(void);
+int16_t tof_range_get(VL53LX_DEV dev);
+void tof_test_ranging(VL53LX_DEV dev);
+int16_t tof_bottom_get_range();
+int16_t tof_front_get_range();
+
+#endif

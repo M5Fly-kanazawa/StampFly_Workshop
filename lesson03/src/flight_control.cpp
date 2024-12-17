@@ -296,7 +296,19 @@ void loop_400Hz(void) {
 
     //Start of Loop_400Hz function
     //以下に記述したコードが400Hzで繰り返される
-    blink_led();
+    //LED10秒動後に変化する
+    if (Loop_counter < 4000)
+    {
+        board_bottom_led(RED, 1);
+        board_tail_led(GREEN, 1);
+        stamp_led(BLUE, 1);  
+    }
+    else
+    {
+        board_bottom_led(YELLOW, 1);
+        board_tail_led(YELLOW, 1);
+        stamp_led(YELLOW, 1);      
+    }
   
     Loop_counter ++ ;
 
